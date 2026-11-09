@@ -84,7 +84,10 @@ jobs:
             -scheme App -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' \
             -archivePath build/App.xcarchive archive \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="Bible Study App"
           xcodebuild -exportArchive -archivePath build/App.xcarchive \
             -exportPath build -exportOptionsPlist ios/App/ExportOptions.plist
       - name: Upload .ipa
