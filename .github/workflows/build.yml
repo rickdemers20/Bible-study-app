@@ -101,3 +101,22 @@ jobs:
         with:
           name: bible-study-ios-ipa
           path: build/*.ipa
+      # Upload the signed .ipa to TestFlight — only runs when the API key exists.
+      - name: Find .ipa
+        if: env.APPLE_API_KEY_ID != ''
+        id: find-ipa
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+        run: echo "ipa-path=$(ls build/*.ipa | head -1)" >> $GITHUB_OUTPUT
+      - name: Upload to TestFlight
+        if: env.APPLE_API_KEY_ID != ''
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        uses: apple-actions/upload-testflight-build@v1
+        with:
+          app-path: ${{ steps.find-ipa.outputs.ipa-path }}
+          issuer-id: ${{ secrets.APPLE_API_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPLE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPLE_API_KEY_P8 }}
