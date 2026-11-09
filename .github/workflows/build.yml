@@ -24,18 +24,16 @@ jobs:
           java-version: 17
       - name: Install dependencies
         run: npm ci
-        working-directory: bible-study-app
       - name: Sync Capacitor
         run: npx cap sync android
-        working-directory: bible-study-app
       - name: Build debug APK
         run: ./gradlew assembleDebug
-        working-directory: bible-study-app/android
+        working-directory: android
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: bible-study-android-debug
-          path: bible-study-app/android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
   ios:
     name: iOS build (unsigned, or signed .ipa when secrets are set)
@@ -49,17 +47,14 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode.app
       - name: Install dependencies
         run: npm ci
-        working-directory: bible-study-app
       - name: Sync Capacitor
         run: npx cap sync ios
-        working-directory: bible-study-app
       - name: Build (unsigned, for checking the project compiles)
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
             -scheme App -configuration Debug \
             -sdk iphoneos -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO
-        working-directory: bible-study-app
       # Signed .ipa (TestFlight / App Store) — only runs when secrets exist.
       - name: Import signing certificate
         if: env.APPLE_CERT_P12_BASE64 != ''
@@ -92,10 +87,9 @@ jobs:
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
           xcodebuild -exportArchive -archivePath build/App.xcarchive \
             -exportPath build -exportOptionsPlist ios/App/ExportOptions.plist
-        working-directory: bible-study-app
       - name: Upload .ipa
         if: env.APPLE_PROVISIONING_PROFILE_BASE64 != ''
         uses: actions/upload-artifact@v4
         with:
           name: bible-study-ios-ipa
-          path: bible-study-app/build/*.ipa
+          path: build/*.ipa
