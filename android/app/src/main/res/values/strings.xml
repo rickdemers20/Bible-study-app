@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bible Study</string>
+    <string name="title_activity_main">Bible Study</string>
+    <string name="package_name">com.rickdemers.biblestudy</string>
+    <string name="custom_url_scheme">com.rickdemers.biblestudy</string>
+</resources>
