@@ -68,6 +68,7 @@ jobs:
           security list-keychains -d user -s build.keychain
           security unlock-keychain -p "" build.keychain
           security import /tmp/cert.p12 -k build.keychain -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
       - name: Install provisioning profile
         if: env.APPLE_PROVISIONING_PROFILE_BASE64 != ''
