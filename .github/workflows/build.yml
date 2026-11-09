@@ -64,9 +64,11 @@ jobs:
         run: |
           echo "$APPLE_CERT_P12_BASE64" | base64 --decode > /tmp/cert.p12
           security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security list-keychains -d user -s build.keychain
+          security unlock-keychain -p "" build.keychain
           security import /tmp/cert.p12 -k build.keychain -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign
           security set-keychain-settings -t 3600 -u build.keychain
-          security unlock-keychain -p "" build.keychain
       - name: Install provisioning profile
         if: env.APPLE_PROVISIONING_PROFILE_BASE64 != ''
         env:
