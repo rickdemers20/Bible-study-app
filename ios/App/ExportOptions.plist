@@ -12,5 +12,12 @@
 	<false/>
 	<key>uploadSymbols</key>
 	<true/>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.rickdemers.biblestudy</key>
+		<string>Bible Study App</string>
+	</dict>
+	<key>signingStyle</key>
+	<string>manual</string>
 </dict>
 </plist>
