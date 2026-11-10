@@ -426,6 +426,23 @@
       .fun-plan ol { margin: 0.6rem 0 0; padding-left: 1.25rem; font-family: var(--serif); font-size: 18px; line-height: 1.55; }
       .fun-plan ol li { margin-top: 0.35rem; }
 
+      /* Church finder (Fun tab) */
+      .church-finder { border: 1px solid var(--border); background: var(--surface); border-radius: 16px; padding: 1rem 1.25rem; margin-top: 1rem; scroll-margin-top: 0.75rem; }
+      .church-finder h4 { font-family: var(--serif); font-size: 24px; font-weight: 600; margin: 0; }
+      .church-privacy { margin: 0.6rem 0 0; font-size: 14px; line-height: 1.55; color: var(--dim); }
+      .church-status { margin: 0.85rem 0 0; font-size: 15px; line-height: 1.55; font-weight: 600; color: var(--accent); }
+      .church-status:empty { margin: 0; }
+      .church-results { margin-top: 0.25rem; }
+      .church-result { border-top: 1px solid var(--border); padding: 0.85rem 0 0.25rem; margin-top: 0.85rem; }
+      .church-result:first-child { border-top: 0; padding-top: 0.35rem; }
+      .church-name { font-family: var(--serif); font-size: 20px; font-weight: 600; line-height: 1.3; margin: 0; }
+      .church-dist { color: var(--gold); font-weight: 700; white-space: nowrap; }
+      .church-addr { margin: 0.25rem 0 0; font-size: 15px; line-height: 1.5; color: var(--dim); }
+      .church-denom { margin: 0.2rem 0 0; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+      .church-actions { margin-top: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+      .church-credit { margin: 0.85rem 0 0; font-size: 13px; line-height: 1.5; color: var(--dim); }
+      .invite-church-jump { margin-top: 0.75rem; text-align: center; }
+
       /* Hebrew learner */
       .rtl-box {
         margin-top: 1.25rem; border: 1px solid var(--gold); border-radius: 16px;
@@ -1393,6 +1410,35 @@
               <a class="btn btn-accent btn-small" href="http://www.zooworldpcb.com/" target="_blank" rel="noopener">Visit ZooWorld</a>
             </div>
           </div>
+
+          <h3 class="section-kicker">Find a church</h3>
+
+          <div class="church-finder" id="church-finder">
+            <h4>Find a church near you</h4>
+            <p class="fun-desc">
+              Looking for a church family where you live — or where you're
+              traveling? Search below and you'll get the Christian churches
+              closest to you first, with directions to each one.
+            </p>
+            <p class="church-privacy">
+              Your location is only used to find churches near you and never
+              leaves your phone. It is only asked for when you tap
+              “Use my location” — never on launch.
+            </p>
+            <div class="fun-actions">
+              <button type="button" class="btn btn-accent" id="church-use-location">Use my location</button>
+            </div>
+            <form class="form-row" id="church-search-form">
+              <label class="form-label" for="church-place-input">Or type a city &amp; state, or a ZIP code</label>
+              <div class="form-flex">
+                <input id="church-place-input" type="text" placeholder="City &amp; state, or ZIP code" autocomplete="off" autocapitalize="words" />
+                <button type="submit" class="btn btn-accent" id="church-search-btn">Search</button>
+              </div>
+            </form>
+            <p class="church-status" id="church-status" role="status" aria-live="polite"></p>
+            <div class="church-results" id="church-results"></div>
+            <p class="church-credit">Church listings from OpenStreetMap — free data shared by volunteers. A church that isn't listed there won't appear, so a quick web search can turn up more nearby.</p>
+          </div>
         </section>
 
         <!-- E-SWORD -->
@@ -1565,6 +1611,10 @@
           <p class="invite-name">Lighthouse Church</p>
           <p class="invite-detail">Sundays at 8:45, 10:15 &amp; 11:45 AM · Mondays at 7 PM — plus a <a href="https://www.instagram.com/lighthouse.students" target="_blank" rel="noopener">great youth church</a> for the kids and teens.</p>
           <a class="btn btn-accent btn-small" href="https://www.lighthousefam.com/" target="_blank" rel="noopener">Visit Lighthouse Church</a>
+        </div>
+
+        <div class="invite-church-jump">
+          <button type="button" class="btn btn-outline-accent" id="goto-church-finder">Find a church near you</button>
         </div>
 
         <footer class="site-foot">
@@ -3099,6 +3149,189 @@
         });
       }
 
+      // --- Church finder (Fun tab) ----------------------------------------------
+      // Churches come from OpenStreetMap through the free Overpass API —
+      // no key and no paid service. A place typed by hand is turned into
+      // coordinates by the free Nominatim geocoder. Location is requested
+      // only when "Use my location" is tapped, never on launch.
+      var churchBusy = false;
+      function churchSay(msg) {
+        var s = $("church-status");
+        if (s) s.textContent = msg;
+      }
+      function churchSetBusy(busy) {
+        churchBusy = busy;
+        var loc = $("church-use-location");
+        var btn = $("church-search-btn");
+        if (loc) { loc.disabled = busy; loc.textContent = busy ? "Searching…" : "Use my location"; }
+        if (btn) { btn.disabled = busy; btn.textContent = busy ? "Searching…" : "Search"; }
+      }
+      function churchDistanceMi(lat1, lon1, lat2, lon2) {
+        var rad = Math.PI / 180;
+        var dLat = (lat2 - lat1) * rad;
+        var dLon = (lon2 - lon1) * rad;
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+      function churchAddress(tags) {
+        var street = "";
+        if (tags["addr:housenumber"] && tags["addr:street"]) street = tags["addr:housenumber"] + " " + tags["addr:street"];
+        else if (tags["addr:street"]) street = tags["addr:street"];
+        var parts = [];
+        if (street) parts.push(street);
+        var cityLine = "";
+        if (tags["addr:city"]) cityLine = tags["addr:city"];
+        if (tags["addr:state"]) cityLine = cityLine ? cityLine + ", " + tags["addr:state"] : tags["addr:state"];
+        if (tags["addr:postcode"]) cityLine = cityLine ? cityLine + " " + tags["addr:postcode"] : tags["addr:postcode"];
+        if (cityLine) parts.push(cityLine);
+        return parts.join(", ");
+      }
+      function renderChurches(list, originLabel) {
+        var box = $("church-results");
+        box.innerHTML = "";
+        if (!list.length) {
+          churchSay("No churches were found within about 25 miles" + (originLabel ? " of " + originLabel : "") + ". Try a nearby town, or check the spelling and search again.");
+          return;
+        }
+        churchSay(list.length + " church" + (list.length === 1 ? "" : "es") + " found within about 25 miles" + (originLabel ? " of " + originLabel : "") + " — nearest first:");
+        list.forEach(function (c) {
+          var card = el("div", "church-result");
+          var distText = c.dist < 0.1 ? "under 0.1 miles away" : (c.dist < 10 ? c.dist.toFixed(1) : String(Math.round(c.dist))) + (c.dist >= 0.95 && c.dist < 1.05 ? " mile away" : " miles away");
+          var name = el("p", "church-name");
+          name.appendChild(document.createTextNode(c.name + " "));
+          name.appendChild(el("span", "church-dist", "· " + distText));
+          card.appendChild(name);
+          if (c.denomination) {
+            var denom = c.denomination.replace(/_/g, " ");
+            card.appendChild(el("p", "church-denom", denom));
+          }
+          if (c.address) card.appendChild(el("p", "church-addr", c.address));
+          var acts = el("div", "church-actions");
+          var dir = el("a", "btn btn-accent btn-small", "Directions");
+          dir.href = "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(c.lat + "," + c.lon);
+          dir.target = "_blank"; dir.rel = "noopener";
+          acts.appendChild(dir);
+          if (c.website) {
+            var web = el("a", "btn btn-outline btn-small", "Website");
+            web.href = c.website; web.target = "_blank"; web.rel = "noopener";
+            acts.appendChild(web);
+          }
+          card.appendChild(acts);
+          box.appendChild(card);
+        });
+      }
+      var OVERPASS_URLS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+      function churchOverpass(query, attempt) {
+        return fetch(OVERPASS_URLS[attempt], {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+          body: "data=" + encodeURIComponent(query)
+        }).catch(function (err) {
+          if (attempt + 1 < OVERPASS_URLS.length) return churchOverpass(query, attempt + 1);
+          throw err;
+        }).then(function (r) {
+          if (!r.ok && attempt + 1 < OVERPASS_URLS.length) return churchOverpass(query, attempt + 1);
+          return r;
+        });
+      }
+      function searchChurches(lat, lon, originLabel) {
+        if (churchBusy) return;
+        churchSetBusy(true);
+        churchSay("Searching for churches within about 25 miles…");
+        $("church-results").innerHTML = "";
+        var radius = 40234; // about 25 miles, in metres
+        var query = "[out:json][timeout:25];(" +
+          'node["amenity"="place_of_worship"]["religion"="christian"](around:' + radius + "," + lat + "," + lon + ");" +
+          'way["amenity"="place_of_worship"]["religion"="christian"](around:' + radius + "," + lat + "," + lon + ");" +
+          'relation["amenity"="place_of_worship"]["religion"="christian"](around:' + radius + "," + lat + "," + lon + ");" +
+          ");out center 300;";
+        churchOverpass(query, 0)
+          .then(function (r) { if (!r.ok) throw new Error("overpass " + r.status); return r.json(); })
+          .then(function (data) {
+            var seen = {};
+            var list = [];
+            (data.elements || []).forEach(function (e) {
+              var tags = e.tags || {};
+              var elat = e.lat != null ? e.lat : (e.center ? e.center.lat : null);
+              var elon = e.lon != null ? e.lon : (e.center ? e.center.lon : null);
+              if (elat == null || elon == null) return;
+              var name = tags.name || "Christian church";
+              var key = name.toLowerCase() + "@" + elat.toFixed(3) + "," + elon.toFixed(3);
+              if (seen[key]) return;
+              seen[key] = 1;
+              var website = tags.website || tags["contact:website"] || "";
+              if (website && !/^https?:\/\//i.test(website)) website = "https://" + website;
+              list.push({
+                name: name,
+                lat: elat, lon: elon,
+                dist: churchDistanceMi(lat, lon, elat, elon),
+                address: churchAddress(tags),
+                denomination: tags.denomination || "",
+                website: website
+              });
+            });
+            list.sort(function (a, b) { return a.dist - b.dist; });
+            renderChurches(list.slice(0, 20), originLabel);
+          })
+          .catch(function () {
+            churchSay("The church search didn't go through — please check your connection and try again.");
+          })
+          .then(function () { churchSetBusy(false); });
+      }
+      function geocodeChurchPlace(q) {
+        if (churchBusy) return;
+        churchSetBusy(true);
+        churchSay("Looking up “" + q + "”…");
+        $("church-results").innerHTML = "";
+        fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q))
+          .then(function (r) { if (!r.ok) throw new Error("nominatim " + r.status); return r.json(); })
+          .then(function (data) {
+            churchSetBusy(false);
+            if (!data || !data.length) {
+              churchSay("“" + q + "” couldn't be found. Try a city and state — like “Springfield, IL” — or a ZIP code.");
+              return;
+            }
+            var label = data[0].display_name ? data[0].display_name.split(",").slice(0, 2).join(",") : q;
+            searchChurches(parseFloat(data[0].lat), parseFloat(data[0].lon), label);
+          })
+          .catch(function () {
+            churchSetBusy(false);
+            churchSay("That place couldn't be looked up — please check your connection and try again.");
+          });
+      }
+      function wireChurchFinder() {
+        var locBtn = $("church-use-location");
+        if (locBtn) locBtn.addEventListener("click", function () {
+          if (churchBusy) return;
+          if (!navigator.geolocation) {
+            churchSay("This device can't share its location — type a city & state or a ZIP code above instead.");
+            return;
+          }
+          churchSay("Asking for your location…");
+          navigator.geolocation.getCurrentPosition(
+            function (pos) { searchChurches(pos.coords.latitude, pos.coords.longitude, "you"); },
+            function () { churchSay("Your location wasn't shared — that's fine. Type a city & state or a ZIP code above instead."); },
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
+          );
+        });
+        var form = $("church-search-form");
+        if (form) form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var q = $("church-place-input").value.trim();
+          if (!q) { churchSay("Type a city & state, or a ZIP code, then tap Search."); return; }
+          geocodeChurchPlace(q);
+        });
+        var jump = $("goto-church-finder");
+        if (jump) jump.addEventListener("click", function () {
+          showTab("fun");
+          setTimeout(function () {
+            var target = $("church-finder");
+            if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 80);
+        });
+      }
+
       // --- Boot ---------------------------------------------------------------
       function boot() {
         buildAliases();
@@ -3132,6 +3365,7 @@
         });
         var funVideos = $("fun-goto-videos");
         if (funVideos) funVideos.addEventListener("click", function () { showTab("places"); });
+        wireChurchFinder();
         var printNotesBtn = $("print-notes-btn");
         if (printNotesBtn) printNotesBtn.addEventListener("click", function () { openPrintNotes(false); });
         var exportNotesBtn = $("export-notes-btn");
