@@ -514,6 +514,11 @@
       .sheet .row { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
       .sheet .err { margin-top: 0.75rem; color: var(--accent); font-size: 14px; }
       [hidden] { display: none !important; }
+      /* Added to a freshly shown tab panel for two frames (see
+         forceTabRepaint): putting the panel on its own composited layer
+         briefly is what makes Android's WebView paint the new tab
+         immediately instead of waiting for the next scroll. */
+      .repaint-kick { transform: translateZ(0); }
 
       /* Bottom tab bar */
       .tabbar {
@@ -1195,8 +1200,8 @@
           <h2 class="view-title">Fun &amp; family night</h2>
           <p class="lede">
             Faith and fun go together. Here are free Bible games and stories
-            to play at home — and, for a night out, family favorites around
-            Panama City Beach.
+            to play at home — and, for a night out, a way to find family fun
+            places near you, wherever you live or travel.
           </p>
 
           <div class="fun-plan">
@@ -1316,99 +1321,34 @@
             </div>
           </div>
 
-          <h3 class="section-kicker">Family night out — Panama City Beach</h3>
-          <p class="lede">
-            Real places near home for bowling, mini-golf, and an evening out
-            with the family. Check each venue's own site for today's hours
-            and prices before you go.
-          </p>
+          <h3 class="section-kicker">Family night out — near you</h3>
 
-          <div class="fun-card">
-            <h4>Guardians Legacy <span class="tag">Family favorite</span></h4>
+          <div class="church-finder" id="fun-finder">
+            <h4>Find fun places near you</h4>
             <p class="fun-desc">
-              One of our family's favorites — we go about once a month. Their
-              Linktree always points to the latest poster and event details,
-              so check there for what's coming up next.
+              Parks, playgrounds, zoos, museums, mini-golf and more —
+              wherever you live, or wherever you're traveling. Search below
+              and you'll get the family fun spots closest to you first,
+              with directions to each one.
+            </p>
+            <p class="church-privacy">
+              Your location is only used to find fun places near you and
+              never leaves your phone. It is only asked for when you tap
+              “Use my location” — never on launch.
             </p>
             <div class="fun-actions">
-              <a class="btn btn-accent btn-small" href="https://linktr.ee/guardianslegacy" target="_blank" rel="noopener">See the latest at Guardians Legacy</a>
+              <button type="button" class="btn btn-accent" id="fun-use-location">Use my location</button>
             </div>
-          </div>
-
-          <div class="fun-card">
-            <h4>Rock'it Lanes <span class="tag">Bowling · Skating · Arcade</span></h4>
-            <p class="fun-desc">
-              A 50,000-square-foot family fun center — 24 bowling lanes, a
-              roller-skating rink, and a mega arcade, all under one roof.
-            </p>
-            <p class="fun-meta">513 N Richard Jackson Blvd, Panama City Beach, FL 32407 · (850) 249-2695</p>
-            <div class="fun-actions">
-              <a class="btn btn-accent btn-small" href="https://rockitlanes.com/" target="_blank" rel="noopener">Visit Rock'it Lanes</a>
-            </div>
-          </div>
-
-          <div class="fun-card">
-            <h4>WonderWorks <span class="tag">Hands-on · Indoor</span></h4>
-            <p class="fun-desc">
-              The famous upside-down house: more than 100 hands-on science
-              exhibits, plus laser tag and an indoor ropes course. A good
-              pick for a rainy evening.
-            </p>
-            <p class="fun-meta">9910 Front Beach Rd, Panama City Beach, FL 32407 · (850) 249-7000</p>
-            <div class="fun-actions">
-              <a class="btn btn-accent btn-small" href="http://www.wonderworksonline.com/panama-city-beach" target="_blank" rel="noopener">Visit WonderWorks</a>
-            </div>
-          </div>
-
-          <div class="fun-card">
-            <h4>Coconut Creek Family Fun Park <span class="tag">Mini-golf · Maze</span></h4>
-            <p class="fun-desc">
-              Three tropical 18-hole mini-golf courses with waterfalls, plus
-              the Gran Maze — a giant, football-field-sized human maze.
-            </p>
-            <p class="fun-meta">9807 Front Beach Rd, Panama City Beach, FL 32407 · (850) 234-2625</p>
-            <div class="fun-actions">
-              <a class="btn btn-accent btn-small" href="https://coconutcreekfun.com/" target="_blank" rel="noopener">Visit Coconut Creek</a>
-            </div>
-          </div>
-
-          <div class="fun-card">
-            <h4>Rainforest Black Light Golf &amp; Arcade <span class="tag">Mini-golf · Indoor</span></h4>
-            <p class="fun-desc">
-              Glow-in-the-dark, climate-controlled 18-hole mini-golf in a
-              jungle setting, alongside a classic-and-modern arcade — fun
-              whatever the weather's doing outside.
-            </p>
-            <p class="fun-meta">9129 Front Beach Rd, Panama City Beach, FL</p>
-            <div class="fun-actions">
-              <a class="btn btn-accent btn-small" href="http://rainforestblacklightgolf.com/" target="_blank" rel="noopener">Visit Rainforest Golf</a>
-            </div>
-          </div>
-
-          <div class="fun-card">
-            <h4>Goofy Golf <span class="tag">Mini-golf · Classic</span></h4>
-            <p class="fun-desc">
-              A Panama City Beach classic since 1959 — two 18-hole courses
-              among giant dinosaurs, a monkey, and a rocket ship. Simple,
-              silly, and easy on the wallet.
-            </p>
-            <p class="fun-meta">12206 Front Beach Rd, Panama City Beach, FL 32407 · (850) 234-6403</p>
-            <div class="fun-actions">
-              <a class="btn btn-accent btn-small" href="http://goofygolfpc.com/" target="_blank" rel="noopener">Visit Goofy Golf</a>
-            </div>
-          </div>
-
-          <div class="fun-card">
-            <h4>ZooWorld <span class="tag">Animals · Day out</span></h4>
-            <p class="fun-desc">
-              A hands-on little zoo where you can feed a giraffe and book
-              up-close animal encounters — sloths, lemurs, kangaroos and
-              more. Plan this one for the daytime.
-            </p>
-            <p class="fun-meta">9008 Front Beach Rd, Panama City Beach, FL 32407 · (844) 966-4968</p>
-            <div class="fun-actions">
-              <a class="btn btn-accent btn-small" href="http://www.zooworldpcb.com/" target="_blank" rel="noopener">Visit ZooWorld</a>
-            </div>
+            <form class="form-row" id="fun-search-form">
+              <label class="form-label" for="fun-place-input">Or type a city &amp; state, or a ZIP code</label>
+              <div class="form-flex">
+                <input id="fun-place-input" type="text" placeholder="City &amp; state, or ZIP code" autocomplete="off" autocapitalize="words" />
+                <button type="submit" class="btn btn-accent" id="fun-search-btn">Search</button>
+              </div>
+            </form>
+            <p class="church-status" id="fun-status" role="status" aria-live="polite"></p>
+            <div class="church-results" id="fun-results"></div>
+            <p class="church-credit">Fun place listings from OpenStreetMap — free data shared by volunteers. A place that isn't listed there won't appear, so a quick web search can turn up more nearby. Check each place's own site for today's hours and prices before you go.</p>
           </div>
 
           <h3 class="section-kicker">Find a church</h3>
@@ -2175,6 +2115,27 @@
           bar.appendChild(b);
         });
       }
+      // Android's WebView (the app on Android phones) can swap the tab
+      // panels in the DOM yet keep presenting the old tab's frame until
+      // the reader scrolls a little — the tap registers, but the new
+      // screen only appears once a scroll forces a repaint. So after
+      // every tab switch, force the repaint that scroll would have
+      // caused: put the new panel on its own composited layer for two
+      // frames, which makes the compositor draw it right away, then take
+      // the layer away again. Harmless on browsers that repaint fine.
+      var repaintKick = 0;
+      function forceTabRepaint(panel) {
+        if (!panel || !window.requestAnimationFrame) return;
+        TABS.forEach(function (t) { $("view-" + t.id).classList.remove("repaint-kick"); });
+        var kick = ++repaintKick;
+        panel.classList.add("repaint-kick");
+        void panel.offsetHeight; // flush the style change before the next frame
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            if (kick === repaintKick) panel.classList.remove("repaint-kick");
+          });
+        });
+      }
       function showTab(id) {
         state.tab = id;
         TABS.forEach(function (t) {
@@ -2189,6 +2150,7 @@
         if (id === "places" && !placesBuilt) { placesBuilt = true; buildPlaces(); }
         if (id === "saved") renderSaved();
         document.querySelector(".wrap").scrollTo({ top: 0 });
+        forceTabRepaint($("view-" + id));
       }
 
       // --- Sheet (bottom panel) -------------------------------------------------
@@ -3150,10 +3112,10 @@
       }
 
       // --- Church finder (Fun tab) ----------------------------------------------
-      // Churches come from OpenStreetMap through the free Overpass API —
-      // no key and no paid service. A place typed by hand is turned into
-      // coordinates by the free Nominatim geocoder. Location is requested
-      // only when "Use my location" is tapped, never on launch.
+      // Churches come from OpenStreetMap through the free Nominatim
+      // search — no key and no paid service. A place typed by hand is
+      // turned into coordinates by the same Nominatim geocoder. Location
+      // is requested only when "Use my location" is tapped, never on launch.
       var churchBusy = false;
       function churchSay(msg) {
         var s = $("church-status");
@@ -3191,10 +3153,10 @@
         var box = $("church-results");
         box.innerHTML = "";
         if (!list.length) {
-          churchSay("No churches were found within about 25 miles" + (originLabel ? " of " + originLabel : "") + ". Try a nearby town, or check the spelling and search again.");
+          churchSay("No churches were found within about 10 miles" + (originLabel ? " of " + originLabel : "") + ". Try a nearby town, or check the spelling and search again.");
           return;
         }
-        churchSay(list.length + " church" + (list.length === 1 ? "" : "es") + " found within about 25 miles" + (originLabel ? " of " + originLabel : "") + " — nearest first:");
+        churchSay(list.length + " church" + (list.length === 1 ? "" : "es") + " found within about 10 miles" + (originLabel ? " of " + originLabel : "") + " — nearest first:");
         list.forEach(function (c) {
           var card = el("div", "church-result");
           var distText = c.dist < 0.1 ? "under 0.1 miles away" : (c.dist < 10 ? c.dist.toFixed(1) : String(Math.round(c.dist))) + (c.dist >= 0.95 && c.dist < 1.05 ? " mile away" : " miles away");
@@ -3221,71 +3183,110 @@
           box.appendChild(card);
         });
       }
-      var OVERPASS_URLS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
-      function churchOverpass(query, attempt) {
-        return fetch(OVERPASS_URLS[attempt], {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-          body: "data=" + encodeURIComponent(query)
-        }).catch(function (err) {
-          if (attempt + 1 < OVERPASS_URLS.length) return churchOverpass(query, attempt + 1);
-          throw err;
-        }).then(function (r) {
-          if (!r.ok && attempt + 1 < OVERPASS_URLS.length) return churchOverpass(query, attempt + 1);
+      function churchFetch(url, options, ms) {
+        var ctrl = ("AbortController" in window) ? new AbortController() : null;
+        var timer = null;
+        if (ctrl) {
+          options = options || {};
+          options.signal = ctrl.signal;
+          timer = setTimeout(function () { ctrl.abort(); }, ms);
+        }
+        return fetch(url, options).then(function (r) {
+          if (timer) clearTimeout(timer);
           return r;
+        }, function (err) {
+          if (timer) clearTimeout(timer);
+          throw err;
         });
       }
       function searchChurches(lat, lon, originLabel) {
         if (churchBusy) return;
         churchSetBusy(true);
-        churchSay("Searching for churches within about 25 miles…");
+        churchSay("Searching for churches within about 10 miles…");
         $("church-results").innerHTML = "";
-        var radius = 40234; // about 25 miles, in metres
-        var query = "[out:json][timeout:25];(" +
-          'node["amenity"="place_of_worship"]["religion"="christian"](around:' + radius + "," + lat + "," + lon + ");" +
-          'way["amenity"="place_of_worship"]["religion"="christian"](around:' + radius + "," + lat + "," + lon + ");" +
-          'relation["amenity"="place_of_worship"]["religion"="christian"](around:' + radius + "," + lat + "," + lon + ");" +
-          ");out center 300;";
-        churchOverpass(query, 0)
-          .then(function (r) { if (!r.ok) throw new Error("overpass " + r.status); return r.json(); })
-          .then(function (data) {
-            var seen = {};
-            var list = [];
-            (data.elements || []).forEach(function (e) {
-              var tags = e.tags || {};
-              var elat = e.lat != null ? e.lat : (e.center ? e.center.lat : null);
-              var elon = e.lon != null ? e.lon : (e.center ? e.center.lon : null);
-              if (elat == null || elon == null) return;
-              var name = tags.name || "Christian church";
-              var key = name.toLowerCase() + "@" + elat.toFixed(3) + "," + elon.toFixed(3);
-              if (seen[key]) return;
-              seen[key] = 1;
-              var website = tags.website || tags["contact:website"] || "";
-              if (website && !/^https?:\/\//i.test(website)) website = "https://" + website;
-              list.push({
-                name: name,
-                lat: elat, lon: elon,
-                dist: churchDistanceMi(lat, lon, elat, elon),
-                address: churchAddress(tags),
-                denomination: tags.denomination || "",
-                website: website
-              });
+        var dLat = 16093 / 111320; // about 10 miles of latitude, in degrees
+        var dLon = 16093 / (111320 * Math.cos(lat * Math.PI / 180));
+        var viewbox = (lon - dLon).toFixed(6) + "," + (lat + dLat).toFixed(6) + "," +
+          (lon + dLon).toFixed(6) + "," + (lat - dLat).toFixed(6);
+        var url = "https://nominatim.openstreetmap.org/search?format=json&limit=50&q=church&bounded=1&viewbox=" +
+          encodeURIComponent(viewbox) + "&addressdetails=1&extratags=1";
+        nominatimLookup(url).then(function (data) {
+          var seen = {};
+          var list = [];
+          (data || []).forEach(function (r) {
+            if (r.class !== "amenity" || r.type !== "place_of_worship") return;
+            var xt = r.extratags || {};
+            if (xt.religion && xt.religion !== "christian") return;
+            var elat = parseFloat(r.lat), elon = parseFloat(r.lon);
+            if (isNaN(elat) || isNaN(elon)) return;
+            var name = r.name || (r.display_name ? r.display_name.split(",")[0] : "") || "Christian church";
+            var key = name.toLowerCase() + "@" + elat.toFixed(3) + "," + elon.toFixed(3);
+            if (seen[key]) return;
+            seen[key] = 1;
+            var addr = r.address || {};
+            var parts = [];
+            var street = "";
+            if (addr.house_number && addr.road) street = addr.house_number + " " + addr.road;
+            else if (addr.road) street = addr.road;
+            if (street) parts.push(street);
+            var cityLine = addr.city || addr.town || addr.village || addr.hamlet || addr.county || "";
+            if (addr.state) cityLine = cityLine ? cityLine + ", " + addr.state : addr.state;
+            if (addr.postcode) cityLine = cityLine ? cityLine + " " + addr.postcode : addr.postcode;
+            if (cityLine) parts.push(cityLine);
+            var address = parts.join(", ");
+            if (!address && r.display_name) {
+              var disp = r.display_name.split(",").slice(1).join(",").trim();
+              if (disp) address = disp;
+            }
+            var website = xt.website || xt["contact:website"] || "";
+            if (website && !/^https?:\/\//i.test(website)) website = "https://" + website;
+            list.push({
+              name: name,
+              lat: elat, lon: elon,
+              dist: churchDistanceMi(lat, lon, elat, elon),
+              address: address,
+              denomination: xt.denomination || "",
+              website: website
             });
-            list.sort(function (a, b) { return a.dist - b.dist; });
-            renderChurches(list.slice(0, 20), originLabel);
-          })
-          .catch(function () {
-            churchSay("The church search didn't go through — please check your connection and try again.");
-          })
-          .then(function () { churchSetBusy(false); });
+          });
+          list = list.filter(function (c) { return c.dist <= 10; });
+          list.sort(function (a, b) { return a.dist - b.dist; });
+          renderChurches(list.slice(0, 20), originLabel);
+        }).catch(function () {
+          churchSay("The church search didn't go through — please check your connection and try again.");
+        }).then(function () { churchSetBusy(false); });
+      }
+      function nominatimLookup(url) {
+        return churchFetch(url, { headers: { "Accept": "application/json" } }, 15000)
+          .then(function (r) { if (!r.ok) throw new Error("nominatim " + r.status); return r.json(); });
       }
       function geocodeChurchPlace(q) {
         if (churchBusy) return;
         churchSetBusy(true);
         churchSay("Looking up “" + q + "”…");
         $("church-results").innerHTML = "";
-        fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q))
-          .then(function (r) { if (!r.ok) throw new Error("nominatim " + r.status); return r.json(); })
+        // A bare number like 32444 exists as a postcode in several
+        // countries — Nominatim's first unfiltered answer for 32444 is a
+        // Ukrainian postcode, not Lynn Haven, Florida. So a 5-digit US
+        // ZIP is looked up with postalcode=<zip>&country=US (plus
+        // countrycodes=us) and never falls back to a worldwide q=
+        // search, which would return the foreign match. Other places
+        // look in the US first and fall back to a worldwide search only
+        // when the US has no match, so a place abroad can still be found.
+        var zip = /^\d{5}$/.test(q) ? q : (/^\d{5}-\d{4}$/.test(q) ? q.slice(0, 5) : null);
+        var first = zip
+          ? "https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&postalcode=" + encodeURIComponent(zip) + "&country=US&countrycodes=us"
+          : "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=" + encodeURIComponent(q);
+        var second = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q);
+        var lookupPromise = zip
+          ? nominatimLookup(first)
+          : nominatimLookup(first).then(function (data) {
+              if (data && data.length) return data;
+              return nominatimLookup(second);
+            }, function () {
+              return nominatimLookup(second);
+            });
+        lookupPromise
           .then(function (data) {
             churchSetBusy(false);
             if (!data || !data.length) {
@@ -3297,7 +3298,7 @@
           })
           .catch(function () {
             churchSetBusy(false);
-            churchSay("That place couldn't be looked up — please check your connection and try again.");
+            churchSay("That place couldn't be looked up — the free map service may be busy right now. Please wait a moment and try again.");
           });
       }
       function wireChurchFinder() {
@@ -3329,6 +3330,216 @@
             var target = $("church-finder");
             if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 80);
+        });
+      }
+
+      // --- Fun places finder (Fun tab) -----------------------------------------
+      // The same approach as the church finder above: OpenStreetMap
+      // through the free Nominatim search — no key and no paid service.
+      // One bounded search per kind of place (park, zoo, museum, …),
+      // run one at a time to stay gentle on the free service, then
+      // merged, deduped and sorted nearest first. Location is requested
+      // only when "Use my location" is tapped, never on launch.
+      var funBusy = false;
+      var FUN_CATS = {
+        "leisure/park": "Park",
+        "leisure/playground": "Playground",
+        "leisure/garden": "Garden",
+        "leisure/nature_reserve": "Nature reserve",
+        "leisure/water_park": "Water park",
+        "leisure/bowling_alley": "Bowling",
+        "leisure/miniature_golf": "Mini-golf",
+        "leisure/ice_rink": "Ice rink",
+        "leisure/swimming_pool": "Swimming pool",
+        "leisure/sports_centre": "Sports center",
+        "leisure/amusement_arcade": "Arcade",
+        "tourism/zoo": "Zoo",
+        "tourism/aquarium": "Aquarium",
+        "tourism/museum": "Museum",
+        "tourism/theme_park": "Theme park",
+        "tourism/attraction": "Attraction",
+        "amenity/cinema": "Movie theater",
+        "natural/beach": "Beach"
+      };
+      var FUN_QUERIES = ["park", "playground", "zoo", "aquarium", "museum",
+        "theme park", "water park", "miniature golf", "bowling", "cinema",
+        "ice rink", "swimming pool"];
+      function funSay(msg) {
+        var s = $("fun-status");
+        if (s) s.textContent = msg;
+      }
+      function funSetBusy(busy) {
+        funBusy = busy;
+        var loc = $("fun-use-location");
+        var btn = $("fun-search-btn");
+        if (loc) { loc.disabled = busy; loc.textContent = busy ? "Searching…" : "Use my location"; }
+        if (btn) { btn.disabled = busy; btn.textContent = busy ? "Searching…" : "Search"; }
+      }
+      function renderFunPlaces(list, originLabel) {
+        var box = $("fun-results");
+        box.innerHTML = "";
+        if (!list.length) {
+          funSay("No fun places were found within about 10 miles" + (originLabel ? " of " + originLabel : "") + ". Try a nearby town, or check the spelling and search again.");
+          return;
+        }
+        funSay(list.length + " fun place" + (list.length === 1 ? "" : "s") + " found within about 10 miles" + (originLabel ? " of " + originLabel : "") + " — nearest first:");
+        list.forEach(function (p) {
+          var card = el("div", "church-result");
+          var distText;
+          if (p.dist < 0.1) distText = "under 0.1 miles away";
+          else if (p.dist >= 0.95 && p.dist < 1.05) distText = p.dist.toFixed(1) + " mile away";
+          else distText = (p.dist < 10 ? p.dist.toFixed(1) : String(Math.round(p.dist))) + " miles away";
+          var name = el("p", "church-name");
+          name.appendChild(document.createTextNode(p.name + " "));
+          name.appendChild(el("span", "church-dist", "· " + distText));
+          card.appendChild(name);
+          if (p.cat) card.appendChild(el("p", "church-denom", p.cat));
+          if (p.address) card.appendChild(el("p", "church-addr", p.address));
+          var acts = el("div", "church-actions");
+          var dir = el("a", "btn btn-accent btn-small", "Directions");
+          dir.href = "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(p.lat + "," + p.lon);
+          dir.target = "_blank"; dir.rel = "noopener";
+          acts.appendChild(dir);
+          if (p.website) {
+            var web = el("a", "btn btn-outline btn-small", "Website");
+            web.href = p.website; web.target = "_blank"; web.rel = "noopener";
+            acts.appendChild(web);
+          }
+          card.appendChild(acts);
+          box.appendChild(card);
+        });
+      }
+      function searchFunPlaces(lat, lon, originLabel) {
+        if (funBusy) return;
+        funSetBusy(true);
+        funSay("Searching for fun places within about 10 miles…");
+        $("fun-results").innerHTML = "";
+        var dLat = 16093 / 111320; // about 10 miles of latitude, in degrees
+        var dLon = 16093 / (111320 * Math.cos(lat * Math.PI / 180));
+        var viewbox = (lon - dLon).toFixed(6) + "," + (lat + dLat).toFixed(6) + "," +
+          (lon + dLon).toFixed(6) + "," + (lat - dLat).toFixed(6);
+        var seen = {};
+        var list = [];
+        var answered = 0;
+        function addResults(data) {
+          (data || []).forEach(function (r) {
+            var cat = FUN_CATS[r.class + "/" + r.type];
+            if (!cat) return;
+            var name = r.name || "";
+            if (!name) return;
+            var elat = parseFloat(r.lat), elon = parseFloat(r.lon);
+            if (isNaN(elat) || isNaN(elon)) return;
+            var key = name.toLowerCase() + "@" + elat.toFixed(3) + "," + elon.toFixed(3);
+            if (seen[key]) return;
+            seen[key] = 1;
+            var xt = r.extratags || {};
+            var addr = r.address || {};
+            var parts = [];
+            var street = "";
+            if (addr.house_number && addr.road) street = addr.house_number + " " + addr.road;
+            else if (addr.road) street = addr.road;
+            if (street) parts.push(street);
+            var cityLine = addr.city || addr.town || addr.village || addr.hamlet || addr.county || "";
+            if (addr.state) cityLine = cityLine ? cityLine + ", " + addr.state : addr.state;
+            if (addr.postcode) cityLine = cityLine ? cityLine + " " + addr.postcode : addr.postcode;
+            if (cityLine) parts.push(cityLine);
+            var address = parts.join(", ");
+            if (!address && r.display_name) {
+              var disp = r.display_name.split(",").slice(1).join(",").trim();
+              if (disp) address = disp;
+            }
+            var website = xt.website || xt["contact:website"] || "";
+            if (website && !/^https?:\/\//i.test(website)) website = "https://" + website;
+            list.push({
+              name: name, cat: cat,
+              lat: elat, lon: elon,
+              dist: churchDistanceMi(lat, lon, elat, elon),
+              address: address,
+              website: website
+            });
+          });
+        }
+        var chain = Promise.resolve();
+        FUN_QUERIES.forEach(function (term) {
+          chain = chain.then(function () {
+            var url = "https://nominatim.openstreetmap.org/search?format=json&limit=50&q=" +
+              encodeURIComponent(term) + "&bounded=1&viewbox=" + encodeURIComponent(viewbox) +
+              "&addressdetails=1&extratags=1";
+            return nominatimLookup(url).then(function (data) {
+              answered++;
+              addResults(data);
+            }, function () { /* one kind of place failed — keep the rest */ });
+          });
+        });
+        chain.then(function () {
+          if (!answered) {
+            funSay("The fun places search didn't go through — please check your connection and try again.");
+            return;
+          }
+          list = list.filter(function (p) { return p.dist <= 10; });
+          list.sort(function (a, b) { return a.dist - b.dist; });
+          renderFunPlaces(list.slice(0, 20), originLabel);
+        }).then(function () { funSetBusy(false); });
+      }
+      function geocodeFunPlace(q) {
+        if (funBusy) return;
+        funSetBusy(true);
+        funSay("Looking up “" + q + "”…");
+        $("fun-results").innerHTML = "";
+        // Same ZIP care as the church finder: a bare 5-digit ZIP is
+        // looked up as a US postal code only, never as a worldwide
+        // search (32444 would otherwise match a Ukrainian postcode).
+        // Other places look in the US first and fall back to a
+        // worldwide search only when the US has no match.
+        var zip = /^\d{5}$/.test(q) ? q : (/^\d{5}-\d{4}$/.test(q) ? q.slice(0, 5) : null);
+        var first = zip
+          ? "https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&postalcode=" + encodeURIComponent(zip) + "&country=US&countrycodes=us"
+          : "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=" + encodeURIComponent(q);
+        var second = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q);
+        var lookupPromise = zip
+          ? nominatimLookup(first)
+          : nominatimLookup(first).then(function (data) {
+              if (data && data.length) return data;
+              return nominatimLookup(second);
+            }, function () {
+              return nominatimLookup(second);
+            });
+        lookupPromise
+          .then(function (data) {
+            funSetBusy(false);
+            if (!data || !data.length) {
+              funSay("“" + q + "” couldn't be found. Try a city and state — like “Springfield, IL” — or a ZIP code.");
+              return;
+            }
+            var label = data[0].display_name ? data[0].display_name.split(",").slice(0, 2).join(",") : q;
+            searchFunPlaces(parseFloat(data[0].lat), parseFloat(data[0].lon), label);
+          })
+          .catch(function () {
+            funSetBusy(false);
+            funSay("That place couldn't be looked up — the free map service may be busy right now. Please wait a moment and try again.");
+          });
+      }
+      function wireFunFinder() {
+        var locBtn = $("fun-use-location");
+        if (locBtn) locBtn.addEventListener("click", function () {
+          if (funBusy) return;
+          if (!navigator.geolocation) {
+            funSay("This device can't share its location — type a city & state or a ZIP code above instead.");
+            return;
+          }
+          funSay("Asking for your location…");
+          navigator.geolocation.getCurrentPosition(
+            function (pos) { searchFunPlaces(pos.coords.latitude, pos.coords.longitude, "you"); },
+            function () { funSay("Your location wasn't shared — that's fine. Type a city & state or a ZIP code above instead."); },
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
+          );
+        });
+        var form = $("fun-search-form");
+        if (form) form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var q = $("fun-place-input").value.trim();
+          if (!q) { funSay("Type a city & state, or a ZIP code, then tap Search."); return; }
+          geocodeFunPlace(q);
         });
       }
 
@@ -3366,6 +3577,7 @@
         var funVideos = $("fun-goto-videos");
         if (funVideos) funVideos.addEventListener("click", function () { showTab("places"); });
         wireChurchFinder();
+        wireFunFinder();
         var printNotesBtn = $("print-notes-btn");
         if (printNotesBtn) printNotesBtn.addEventListener("click", function () { openPrintNotes(false); });
         var exportNotesBtn = $("export-notes-btn");
