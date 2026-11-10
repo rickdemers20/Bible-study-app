@@ -428,6 +428,8 @@
 
       /* Church finder (Fun tab) */
       .church-finder { border: 1px solid var(--border); background: var(--surface); border-radius: 16px; padding: 1rem 1.25rem; margin-top: 1rem; scroll-margin-top: 0.75rem; }
+      .finder-spotlight { border: 2px solid var(--gold); background: #f7ecd2; box-shadow: 0 3px 14px rgb(169 126 47 / 0.22); }
+      .finder-spotlight h4 { color: var(--accent); }
       .church-finder h4 { font-family: var(--serif); font-size: 24px; font-weight: 600; margin: 0; }
       .church-privacy { margin: 0.6rem 0 0; font-size: 14px; line-height: 1.55; color: var(--dim); }
       .church-status { margin: 0.85rem 0 0; font-size: 15px; line-height: 1.55; font-weight: 600; color: var(--accent); }
@@ -1204,6 +1206,65 @@
             places near you, wherever you live or travel.
           </p>
 
+          <h3 class="section-kicker">Find a church</h3>
+
+          <div class="church-finder finder-spotlight" id="church-finder">
+            <h4>Find a church near you</h4>
+            <p class="fun-desc">
+              Looking for a church family where you live — or where you're
+              traveling? Search below and you'll get the Christian churches
+              closest to you first, with directions to each one.
+            </p>
+            <p class="church-privacy">
+              Your location is only used to find churches near you and never
+              leaves your phone. It is only asked for when you tap
+              “Use my location” — never on launch.
+            </p>
+            <div class="fun-actions">
+              <button type="button" class="btn btn-accent" id="church-use-location">Use my location</button>
+            </div>
+            <form class="form-row" id="church-search-form">
+              <label class="form-label" for="church-place-input">Or type a city &amp; state, or a ZIP code</label>
+              <div class="form-flex">
+                <input id="church-place-input" type="text" placeholder="City &amp; state, or ZIP code" autocomplete="off" autocapitalize="words" />
+                <button type="submit" class="btn btn-accent" id="church-search-btn">Search</button>
+              </div>
+            </form>
+            <p class="church-status" id="church-status" role="status" aria-live="polite"></p>
+            <div class="church-results" id="church-results"></div>
+            <p class="church-credit">Church listings from OpenStreetMap — free data shared by volunteers. A church that isn't listed there won't appear, so a quick web search can turn up more nearby.</p>
+          </div>
+          <h3 class="section-kicker">Family night out — near you</h3>
+
+          <div class="church-finder finder-spotlight" id="fun-finder">
+            <h4>Find fun places near you</h4>
+            <p class="fun-desc">
+              Parks, playgrounds, zoos, museums, mini-golf and more —
+              wherever you live, or wherever you're traveling. Search below
+              and you'll get a mix of the family fun spots near you — a few
+              of each kind, so the parks don't crowd out the bowling,
+              mini-golf and zoos — with directions to each one.
+            </p>
+            <p class="church-privacy">
+              Your location is only used to find fun places near you and
+              never leaves your phone. It is only asked for when you tap
+              “Use my location” — never on launch.
+            </p>
+            <div class="fun-actions">
+              <button type="button" class="btn btn-accent" id="fun-use-location">Use my location</button>
+            </div>
+            <form class="form-row" id="fun-search-form">
+              <label class="form-label" for="fun-place-input">Or type a city &amp; state, or a ZIP code</label>
+              <div class="form-flex">
+                <input id="fun-place-input" type="text" placeholder="City &amp; state, or ZIP code" autocomplete="off" autocapitalize="words" />
+                <button type="submit" class="btn btn-accent" id="fun-search-btn">Search</button>
+              </div>
+            </form>
+            <p class="church-status" id="fun-status" role="status" aria-live="polite"></p>
+            <div class="church-results" id="fun-results"></div>
+            <p class="church-credit">Fun place listings from OpenStreetMap — free data shared by volunteers. A place that isn't listed there won't appear, so a quick web search can turn up more nearby. Check each place's own site for today's hours and prices before you go.</p>
+          </div>
+
           <div class="fun-plan">
             <h3>A simple family night at home</h3>
             <ol>
@@ -1321,64 +1382,6 @@
             </div>
           </div>
 
-          <h3 class="section-kicker">Family night out — near you</h3>
-
-          <div class="church-finder" id="fun-finder">
-            <h4>Find fun places near you</h4>
-            <p class="fun-desc">
-              Parks, playgrounds, zoos, museums, mini-golf and more —
-              wherever you live, or wherever you're traveling. Search below
-              and you'll get the family fun spots closest to you first,
-              with directions to each one.
-            </p>
-            <p class="church-privacy">
-              Your location is only used to find fun places near you and
-              never leaves your phone. It is only asked for when you tap
-              “Use my location” — never on launch.
-            </p>
-            <div class="fun-actions">
-              <button type="button" class="btn btn-accent" id="fun-use-location">Use my location</button>
-            </div>
-            <form class="form-row" id="fun-search-form">
-              <label class="form-label" for="fun-place-input">Or type a city &amp; state, or a ZIP code</label>
-              <div class="form-flex">
-                <input id="fun-place-input" type="text" placeholder="City &amp; state, or ZIP code" autocomplete="off" autocapitalize="words" />
-                <button type="submit" class="btn btn-accent" id="fun-search-btn">Search</button>
-              </div>
-            </form>
-            <p class="church-status" id="fun-status" role="status" aria-live="polite"></p>
-            <div class="church-results" id="fun-results"></div>
-            <p class="church-credit">Fun place listings from OpenStreetMap — free data shared by volunteers. A place that isn't listed there won't appear, so a quick web search can turn up more nearby. Check each place's own site for today's hours and prices before you go.</p>
-          </div>
-
-          <h3 class="section-kicker">Find a church</h3>
-
-          <div class="church-finder" id="church-finder">
-            <h4>Find a church near you</h4>
-            <p class="fun-desc">
-              Looking for a church family where you live — or where you're
-              traveling? Search below and you'll get the Christian churches
-              closest to you first, with directions to each one.
-            </p>
-            <p class="church-privacy">
-              Your location is only used to find churches near you and never
-              leaves your phone. It is only asked for when you tap
-              “Use my location” — never on launch.
-            </p>
-            <div class="fun-actions">
-              <button type="button" class="btn btn-accent" id="church-use-location">Use my location</button>
-            </div>
-            <form class="form-row" id="church-search-form">
-              <label class="form-label" for="church-place-input">Or type a city &amp; state, or a ZIP code</label>
-              <div class="form-flex">
-                <input id="church-place-input" type="text" placeholder="City &amp; state, or ZIP code" autocomplete="off" autocapitalize="words" />
-                <button type="submit" class="btn btn-accent" id="church-search-btn">Search</button>
-              </div>
-            </form>
-            <p class="church-status" id="church-status" role="status" aria-live="polite"></p>
-            <div class="church-results" id="church-results"></div>
-            <p class="church-credit">Church listings from OpenStreetMap — free data shared by volunteers. A church that isn't listed there won't appear, so a quick web search can turn up more nearby.</p>
-          </div>
         </section>
 
         <!-- E-SWORD -->
@@ -3338,8 +3341,11 @@
       // through the free Nominatim search — no key and no paid service.
       // One bounded search per kind of place (park, zoo, museum, …),
       // run one at a time to stay gentle on the free service, then
-      // merged, deduped and sorted nearest first. Location is requested
-      // only when "Use my location" is tapped, never on launch.
+      // merged and deduped. The merged list is capped to a few places
+      // per kind and mixed (see mixFunPlaces) so parks — usually the
+      // most numerous kind nearby — don't crowd out the bowling,
+      // mini-golf, zoos and museums. Location is requested only when
+      // "Use my location" is tapped, never on launch.
       var funBusy = false;
       var FUN_CATS = {
         "leisure/park": "Park",
@@ -3363,7 +3369,11 @@
       };
       var FUN_QUERIES = ["park", "playground", "zoo", "aquarium", "museum",
         "theme park", "water park", "miniature golf", "bowling", "cinema",
-        "ice rink", "swimming pool"];
+        "ice rink", "swimming pool", "beach", "arcade"];
+      // How many results to show, and the most any one kind of place
+      // (Park, Bowling, Zoo, …) may contribute before the top-up below.
+      var FUN_RESULT_LIMIT = 20;
+      var FUN_PER_KIND = 3;
       function funSay(msg) {
         var s = $("fun-status");
         if (s) s.textContent = msg;
@@ -3382,7 +3392,7 @@
           funSay("No fun places were found within about 10 miles" + (originLabel ? " of " + originLabel : "") + ". Try a nearby town, or check the spelling and search again.");
           return;
         }
-        funSay(list.length + " fun place" + (list.length === 1 ? "" : "s") + " found within about 10 miles" + (originLabel ? " of " + originLabel : "") + " — nearest first:");
+        funSay(list.length + " fun place" + (list.length === 1 ? "" : "s") + " found within about 10 miles" + (originLabel ? " of " + originLabel : "") + " — a mix of kinds, with the nearest of each kind first:");
         list.forEach(function (p) {
           var card = el("div", "church-result");
           var distText;
@@ -3408,6 +3418,39 @@
           card.appendChild(acts);
           box.appendChild(card);
         });
+      }
+      // Cap and mix the merged results. `list` arrives sorted nearest
+      // first. Each kind keeps only its FUN_PER_KIND nearest places, so
+      // no single kind can fill the list; if the caps leave the list
+      // short (a spot with mostly parks, say), the nearest leftovers
+      // top it back up so it still fills. The picked places are then
+      // ordered by their rank within their own kind — every kind's
+      // nearest place first, then every kind's second nearest, and so
+      // on — so the variety shows up right away instead of the other
+      // kinds trailing in behind a solid block of parks.
+      function mixFunPlaces(list) {
+        var byKind = {};
+        var kinds = [];
+        list.forEach(function (p) {
+          if (!byKind[p.cat]) { byKind[p.cat] = []; kinds.push(p.cat); }
+          byKind[p.cat].push(p);
+        });
+        var picked = [];
+        var leftovers = [];
+        kinds.forEach(function (cat) {
+          byKind[cat].forEach(function (p, i) { p.kindRank = i; });
+          picked = picked.concat(byKind[cat].slice(0, FUN_PER_KIND));
+          leftovers = leftovers.concat(byKind[cat].slice(FUN_PER_KIND));
+        });
+        leftovers.sort(function (a, b) { return a.dist - b.dist; });
+        while (picked.length < FUN_RESULT_LIMIT && leftovers.length) {
+          picked.push(leftovers.shift());
+        }
+        picked.sort(function (a, b) {
+          if (a.kindRank !== b.kindRank) return a.kindRank - b.kindRank;
+          return a.dist - b.dist;
+        });
+        return picked.slice(0, FUN_RESULT_LIMIT);
       }
       function searchFunPlaces(lat, lon, originLabel) {
         if (funBusy) return;
@@ -3478,7 +3521,7 @@
           }
           list = list.filter(function (p) { return p.dist <= 10; });
           list.sort(function (a, b) { return a.dist - b.dist; });
-          renderFunPlaces(list.slice(0, 20), originLabel);
+          renderFunPlaces(mixFunPlaces(list), originLabel);
         }).then(function () { funSetBusy(false); });
       }
       function geocodeFunPlace(q) {
