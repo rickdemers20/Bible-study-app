@@ -34,6 +34,37 @@ jobs:
         with:
           name: bible-study-android-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+      # Signed release AAB (Google Play) — only runs when the Android
+      # signing secrets exist (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+      # ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD). The keystore itself is never
+      # committed; it is decoded from the base64 secret at build time.
+      - name: Decode release keystore
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/release.keystore
+      - name: Build signed release AAB
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file="$PWD/release.keystore" \
+            -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
+        working-directory: android
+      - name: Upload AAB
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bible-study-android-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
 
   ios:
     name: iOS build (unsigned, or signed .ipa when secrets are set)
