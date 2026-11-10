@@ -504,14 +504,15 @@
         border-top: 1px solid var(--border); background: var(--surface);
         padding-bottom: env(safe-area-inset-bottom);
       }
-      .tabbar-inner { margin: 0 auto; max-width: 42rem; display: grid; grid-template-columns: repeat(9, 1fr); }
+      .tabbar-inner { margin: 0 auto; max-width: 42rem; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); }
       .tab-btn {
-        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-        min-height: 52px; border: 0; background: none; color: var(--dim);
-        font-size: 10.5px; font-weight: 600; padding: 0.3rem 0.1rem; line-height: 1.15; text-align: center;
+        display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px;
+        height: 58px; min-width: 0; border: 0; background: none; color: var(--dim);
+        font-size: 9.5px; font-weight: 600; padding: 7px 1px 4px; line-height: 1.15; text-align: center;
       }
-      .tab-btn svg { width: 24px; height: 24px; }
-      .tab-btn.active { color: var(--accent); }
+      .tab-btn svg { width: 20px; height: 20px; flex: none; }
+      .tab-btn span { display: block; width: 100%; overflow-wrap: break-word; }
+      .tab-btn.active { color: var(--accent); box-shadow: inset 0 2px 0 var(--accent); }
 
       /* My notes: print / save / import actions */
       .notes-actions { margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1rem; }
@@ -2320,7 +2321,7 @@
           var rowEl = el("div", "verse" + (state.highlightVerse === vnum ? " hl" : ""));
           rowEl.setAttribute("data-verse", String(vnum));
           var p = el("p", "verse-text");
-          var sup = el("sup", "verse-num", String(vnum));
+          var sup = el("sup", "verse-num", String(ch) + "." + String(vnum));
           p.appendChild(sup);
           text.split(/\s+/).filter(Boolean).forEach(function (w) {
             // Only a word with a real entry in Webster's 1828 or Easton's
