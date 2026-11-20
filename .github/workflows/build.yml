@@ -112,8 +112,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # NOTE (Nov 20, 2026): pin Xcode 26.3 like the RollOnRV workflow does.
+      # The default /Applications/Xcode.app on this runner no longer ships
+      # `altool`, which apple-actions/upload-testflight-build@v1 uses — the
+      # Upload to TestFlight step failed with "xcrun failed with exit code 1"
+      # on every run since Nov 10, while RollOnRV (pinned 26.3) uploads fine.
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app
       - name: Install dependencies
         run: npm ci
       - name: Sync Capacitor
