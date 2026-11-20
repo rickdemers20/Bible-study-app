@@ -27,7 +27,11 @@ jobs:
           p = pathlib.Path('www/index.html')
           s = p.read_text()
           if key and '__GEMINI_API_KEY__' in s:
-              p.write_text(s.replace('__GEMINI_API_KEY__', key))
+              # First occurrence only: the config value. (The guard in
+              # index.html must never contain the placeholder text —
+              # replacing every occurrence rewrote the guard to match the
+              # real key and wipe it; that is what broke build 7.)
+              p.write_text(s.replace('__GEMINI_API_KEY__', key, 1))
               print('Gemini key injected')
           else:
               print('No Gemini key secret; placeholder left (Nova shows not-set-up)')
@@ -43,6 +47,16 @@ jobs:
         run: npm ci
       - name: Sync Capacitor
         run: npx cap sync android
+      # Guard: fail the build if the key placeholder survived into the
+      # built web assets. (Build 7 shipped with the key injected and
+      # then wiped at runtime, so prove here that it landed.)
+      - name: Verify Gemini key in built web assets
+        run: |
+          if grep -q '__GEMINI_API_KEY__' www/index.html android/app/src/main/assets/public/index.html; then
+            echo 'ERROR: Gemini API key placeholder still present in built web assets'
+            exit 1
+          fi
+          echo 'Gemini key placeholder absent from built web assets'
       - name: Build debug APK
         run: ./gradlew assembleDebug
         working-directory: android
@@ -104,7 +118,11 @@ jobs:
           p = pathlib.Path('www/index.html')
           s = p.read_text()
           if key and '__GEMINI_API_KEY__' in s:
-              p.write_text(s.replace('__GEMINI_API_KEY__', key))
+              # First occurrence only: the config value. (The guard in
+              # index.html must never contain the placeholder text —
+              # replacing every occurrence rewrote the guard to match the
+              # real key and wipe it; that is what broke build 7.)
+              p.write_text(s.replace('__GEMINI_API_KEY__', key, 1))
               print('Gemini key injected')
           else:
               print('No Gemini key secret; placeholder left (Nova shows not-set-up)')
@@ -123,6 +141,16 @@ jobs:
         run: npm ci
       - name: Sync Capacitor
         run: npx cap sync ios
+      # Guard: fail the build if the key placeholder survived into the
+      # built web assets. (Build 7 shipped with the key injected and
+      # then wiped at runtime, so prove here that it landed.)
+      - name: Verify Gemini key in built web assets
+        run: |
+          if grep -q '__GEMINI_API_KEY__' www/index.html ios/App/App/public/index.html; then
+            echo 'ERROR: Gemini API key placeholder still present in built web assets'
+            exit 1
+          fi
+          echo 'Gemini key placeholder absent from built web assets'
       - name: Build (unsigned, for checking the project compiles)
         run: |
           xcodebuild -project ios/App/App.xcodeproj \

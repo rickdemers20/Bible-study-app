@@ -2922,7 +2922,12 @@
 
       // CI injects the real key at build time (GEMINI_API_KEY repo secret).
       // A leftover placeholder means "no key" — Nova shows not-set-up.
-      if (NOVA_CONFIG.apiKey === "__GEMINI_API_KEY__") NOVA_CONFIG.apiKey = "";
+      // NOTE: this check must never spell out the placeholder text itself.
+      // CI replaces every occurrence of it, so a literal here would be
+      // rewritten to the real key and the check would wipe the key it
+      // just injected — that is what broke build 7 (key injected, then
+      // cleared at runtime, so Nova showed not-set-up).
+      if (!NOVA_CONFIG.apiKey || NOVA_CONFIG.apiKey.indexOf("GEMINI_API_KEY") !== -1) NOVA_CONFIG.apiKey = "";
 
       var NOVA_SYSTEM = "You are Nova, an AI Bible study helper inside a King James Bible app. " +
         "Answer only from the King James Bible. Keep answers short and plain — a few sentences, or a short list. " +
