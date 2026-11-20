@@ -235,6 +235,12 @@
       .jump-form .form-label { display: block; text-align: center; }
       .jump-form .form-flex { margin-top: 0.35rem; }
       .jump-note { margin: 0.45rem 0 0; text-align: center; font-size: 14px; font-style: italic; color: var(--dim); }
+      /* "Snap a page" (Build 16): small and quiet, under the jump box. */
+      .snap-row { margin: 0.6rem auto 0; max-width: 24rem; text-align: center; }
+      .snap-hint { margin: 0.35rem 0 0; font-size: 13px; color: var(--dim); }
+      .snap-candidates { margin: 0.5rem auto 0; max-width: 24rem; display: grid; gap: 0.35rem; }
+      .snap-candidates button { display: block; width: 100%; text-align: left; font: inherit; font-size: 15px; color: inherit; background: none; border: 1px solid var(--dim); border-radius: 8px; padding: 0.45rem 0.6rem; cursor: pointer; }
+      .snap-candidates button:active { background: var(--accent-soft); }
       .watch-row { margin-top: 0.4rem; text-align: center; }
 
       /* Verses */
@@ -852,6 +858,11 @@
             </div>
             <p class="jump-note" id="jump-note" hidden></p>
           </form>
+          <div class="snap-row">
+            <button type="button" class="btn btn-outline-accent btn-small" id="snap-page-btn">Snap a page</button>
+            <p class="snap-hint">Hold the page flat, fill the frame, good light.</p>
+          </div>
+          <div class="snap-candidates" id="snap-candidates" hidden></div>
           <p class="chapter-hint">
             Tap an underlined word to look it up — Webster's 1828 for the
             everyday words, Easton's Bible Dictionary for the names, places,
@@ -2208,6 +2219,122 @@
         holden: "hold", shaven: "shave", befallen: "befall", jubile: "jubilee",
         skilful: "skillful", plaister: "plaster", woollen: "woolen",
         marvellous: "marvelous", caterpiller: "caterpillar", musick: "music" };
+      // --- "Snap a page" matcher (Build 16) --- BEGIN
+      // Match OCR lines from a photo of a Bible page to the first verse on the
+      // page. Validated on Rick's five real Bible photos (RapidOCR): exact on
+      // 4 of 5, off by one verse on Matthew 3-4. Rule: normalize the OCR words
+      // (lowercase, drop punctuation and standalone/superscript verse numbers,
+      // run each word through normalizeWord + IRREGULAR_WORDS), then match word
+      // 4-grams against the bundled KJV, chapter-first — aggregate 4-gram hits
+      // per chapter, keep chapters with >=40% of the top chapter's hits, and
+      // jump to the earliest verse in those chapters with >=3 four-gram hits.
+      // Never a bare "earliest canonical verse" rule: parallel passages
+      // (Matt 24:40 vs Luke 17:36) and chapter-boundary spreads break it.
+      // Headings, "Translation Notes" footers, running headers, and page
+      // numbers are excluded as far as the text allows: standalone numbers are
+      // dropped, lines naming Translation Notes are skipped, and the 4-gram
+      // bar already filters the short glosses and headers that remain
+      // (e.g. "1:6 firmament: space" is two words; "MATTHEW 4" is one).
+      // snapMatch(lines) takes OCR lines — [{text, x, y, width, height}] from
+      // the native plugin, in reading order, or plain strings — and returns
+      // { best: {bookIndex, chapter, verse, hits} | null,
+      //   candidates: [{bookIndex, chapter, verse, hits}] } with up to 3
+      // distinct verses, best first by hit count, for the weak-match case.
+      var SNAP_GRAM = 4;
+      var SNAP_MIN_HITS = 3;
+      var SNAP_CHAPTER_FRACTION = 0.4;
+      var SNAP_CANDIDATES = 3;
+
+      function snapCanonWord(raw) {
+        var w = normalizeWord(raw);
+        if (!w) return "";
+        return IRREGULAR_WORDS[w] || w;
+      }
+
+      function snapWords(text) {
+        var parts = String(text).toLowerCase().split(/[^a-z0-9']+/);
+        var out = [];
+        for (var i = 0; i < parts.length; i++) {
+          var w = snapCanonWord(parts[i]);
+          if (w) out.push(w);
+        }
+        return out;
+      }
+
+      function snapMatch(lines) {
+        if (!KJV || !lines || !lines.length) return { best: null, candidates: [] };
+        var ocrWords = [];
+        for (var li = 0; li < lines.length; li++) {
+          var line = lines[li];
+          var t = line == null ? "" : (typeof line === "string" ? line : (line.text || ""));
+          if (/translation notes/i.test(t)) continue;
+          var ws = snapWords(t);
+          for (var wi = 0; wi < ws.length; wi++) ocrWords.push(ws[wi]);
+        }
+        if (ocrWords.length < SNAP_GRAM) return { best: null, candidates: [] };
+        var ocrGrams = {};
+        for (var i = 0; i + SNAP_GRAM <= ocrWords.length; i++) {
+          ocrGrams[ocrWords.slice(i, i + SNAP_GRAM).join(" ")] = true;
+        }
+        // Scan the whole KJV in canonical order, counting each verse's 4-grams
+        // that appear in the OCR text; aggregate the same counts per chapter.
+        var verseHits = [];
+        var chapterHits = {};
+        var topChapterHits = 0;
+        for (var bi = 0; bi < KJV.length; bi++) {
+          var book = KJV[bi];
+          for (var ci = 0; ci < book.chapters.length; ci++) {
+            var chap = book.chapters[ci];
+            var chHits = 0;
+            for (var vi = 0; vi < chap.length; vi++) {
+              var vw = snapWords(chap[vi]);
+              var hits = 0;
+              for (var gi = 0; gi + SNAP_GRAM <= vw.length; gi++) {
+                if (ocrGrams[vw.slice(gi, gi + SNAP_GRAM).join(" ")]) hits++;
+              }
+              verseHits.push(hits);
+              chHits += hits;
+            }
+            if (chHits > 0) {
+              chapterHits[bi + ":" + (ci + 1)] = chHits;
+              if (chHits > topChapterHits) topChapterHits = chHits;
+            }
+          }
+        }
+        if (topChapterHits === 0) return { best: null, candidates: [] };
+        var kept = {};
+        for (var key in chapterHits) {
+          if (chapterHits[key] >= SNAP_CHAPTER_FRACTION * topChapterHits) kept[key] = true;
+        }
+        var best = null;
+        var ranked = [];
+        var idx = 0;
+        for (var bi2 = 0; bi2 < KJV.length; bi2++) {
+          var book2 = KJV[bi2];
+          for (var ci2 = 0; ci2 < book2.chapters.length; ci2++) {
+            var chap2 = book2.chapters[ci2];
+            var inKept = !!kept[bi2 + ":" + (ci2 + 1)];
+            for (var vi2 = 0; vi2 < chap2.length; vi2++, idx++) {
+              var h = verseHits[idx];
+              if (h <= 0) continue;
+              var ref = { bookIndex: bi2, chapter: ci2 + 1, verse: vi2 + 1, hits: h, order: idx };
+              ranked.push(ref);
+              if (!best && inKept && h >= SNAP_MIN_HITS) best = ref;
+            }
+          }
+        }
+        ranked.sort(function (a, b) { return (b.hits - a.hits) || (a.order - b.order); });
+        var candidates = [];
+        for (var r = 0; r < ranked.length && candidates.length < SNAP_CANDIDATES; r++) {
+          var c = ranked[r];
+          candidates.push({ bookIndex: c.bookIndex, chapter: c.chapter, verse: c.verse, hits: c.hits });
+        }
+        return {
+          best: best ? { bookIndex: best.bookIndex, chapter: best.chapter, verse: best.verse, hits: best.hits } : null,
+          candidates: candidates
+        };
+      }
+      // --- "Snap a page" matcher (Build 16) --- END
       function undoubleStem(s) {
         return s.length > 2 && s.charAt(s.length - 1) === s.charAt(s.length - 2) && "aeiou".indexOf(s.charAt(s.length - 1)) === -1 ? s.slice(0, -1) : s;
       }
@@ -3989,6 +4116,97 @@
             note.textContent = "Couldn't find that verse — try John 3:16";
             note.hidden = false;
           }
+        });
+      }
+
+      // --- "Snap a page" (Build 16) ----------------------------------------
+      // Free for everyone — no paywall gate, no store check anywhere in
+      // this flow. Native only: on the web (or without the plugin) the
+      // button explains it needs the app on the iPhone. Camera ->
+      // BibleOCR.recognizeText -> snapMatch -> strong match jumps straight
+      // to the verse (highlighted); a weak match offers the top candidate
+      // verses as tappable rows; anything unreadable leaves the user on
+      // the Read tab with a plain message. The Go to verse box above stays
+      // the manual fallback. A user-cancelled camera sheet just resets
+      // quietly — no error message for changing your mind.
+      function wireSnapPage() {
+        var btn = $("snap-page-btn");
+        if (!btn) return;
+        btn.addEventListener("click", function () {
+          var note = $("jump-note");
+          var box = $("snap-candidates");
+          box.innerHTML = "";
+          box.hidden = true;
+          var plugins = (window.Capacitor && window.Capacitor.Plugins) || null;
+          var camera = plugins && plugins.Camera;
+          var ocr = plugins && plugins.BibleOCR;
+          if (!camera || !ocr) {
+            note.textContent = "Snap a page needs the app on your iPhone — it reads the page right on your phone.";
+            note.hidden = false;
+            return;
+          }
+          if (!KJV) {
+            note.textContent = "The Bible text is still loading — try again in a moment.";
+            note.hidden = false;
+            return;
+          }
+          btn.disabled = true;
+          note.textContent = "Reading the page…";
+          note.hidden = false;
+          function fail() {
+            btn.disabled = false;
+            note.textContent = "Couldn't read that page — try again with the page flat and well lit, or use Go to verse above.";
+            note.hidden = false;
+          }
+          function resetQuietly() {
+            btn.disabled = false;
+            note.textContent = "";
+            note.hidden = true;
+          }
+          camera.getPhoto({ quality: 90, resultType: "base64", source: "camera" }).then(function (photo) {
+            if (!photo || !photo.base64String) { fail(); return; }
+            return ocr.recognizeText({ image: photo.base64String });
+          }).then(function (res) {
+            if (!res) return; // fail() already ran above
+            var lines = res.lines || [];
+            if (!lines.length) { fail(); return; }
+            var match = snapMatch(lines);
+            btn.disabled = false;
+            // Strong match jumps straight there. A 3-hit match is real
+            // enough to offer but not to jump on unasked — show it (first)
+            // among the tappable candidates instead.
+            if (match.best && match.best.hits >= SNAP_MIN_HITS + 1) {
+              note.textContent = "";
+              note.hidden = true;
+              openRef(match.best);
+              return;
+            }
+            var rows = [];
+            if (match.best) rows.push(match.best);
+            match.candidates.forEach(function (c) {
+              if (rows.every(function (r) { return refKey(r) !== refKey(c); })) rows.push(c);
+            });
+            rows = rows.slice(0, SNAP_CANDIDATES);
+            if (!rows.length) { fail(); return; }
+            note.textContent = "That page was hard to read — is it one of these?";
+            note.hidden = false;
+            rows.forEach(function (ref) {
+              var b = el("button", "", formatRef(ref));
+              b.type = "button";
+              b.addEventListener("click", function () {
+                box.innerHTML = "";
+                box.hidden = true;
+                note.textContent = "";
+                note.hidden = true;
+                openRef(ref);
+              });
+              box.appendChild(b);
+            });
+            box.hidden = false;
+          }).catch(function (err) {
+            if (err && /cancel/i.test(String(err.message || err))) { resetQuietly(); return; }
+            fail();
+          });
         });
       }
 
@@ -6720,6 +6938,7 @@
         renderPlans();
         wireSearch();
         wireJump();
+        wireSnapPage();
         wireWords();
         // Premium store (native only; no-op on the web). Registers the two
         // subscription products so an active purchase / Offer Code restores

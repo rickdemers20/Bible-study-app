@@ -1,0 +1,1 @@
+{"capacitor":{"android":{"src":"android"},"ios":{"src":"ios"}},"description":"On-device OCR for the Bible Study app (snap a page / Link Bible to our app). iOS uses Apple Vision, Android uses ML Kit Text Recognition v2. Photos are processed on the device and never leave it.","license":"MIT","name":"bible-ocr","peerDependencies":{"@capacitor/core":"^8.0.0"},"version":"1.0.0"}

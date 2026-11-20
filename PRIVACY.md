@@ -12,6 +12,7 @@ Bible Study is a free Bible reading and study app. This policy explains what the
 
 - **Your notes and favorite verses** are saved only on your own device (in the app's local storage). They are never sent to us or to anyone else, and they are never synced to a server. If you delete the app, your notes and favorites are deleted with it.
 - **The Bible text and dictionary** are bundled inside the app, so reading and word lookup work offline without contacting any server.
+- **Photos of Bible pages** (snap a page / "Link Bible to our app") are processed on your device only — by Apple Vision on iPhone/iPad or ML Kit on Android — and are never stored, sent, or shared anywhere. The photo is read in memory to find the verse, then discarded.
 
 ## Donations
 
