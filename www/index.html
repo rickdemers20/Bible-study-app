@@ -3110,7 +3110,7 @@
           body: JSON.stringify({
             system_instruction: { parts: [{ text: NOVA_SYSTEM }] },
             contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 900 }
+            generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
           })
         }).then(function (r) {
           if (!r.ok) {
@@ -3125,7 +3125,12 @@
             var parts = cands[0].content && cands[0].content.parts;
             if (parts) {
               var out = parts.map(function (p) { return p.text || ""; }).join("").trim();
-              if (out) return out;
+              if (out) {
+                // A reply cut short at the token cap must never look
+                // complete (build 13: a prayer ended mid-word, "**Ad").
+                if (cands[0].finishReason === "MAX_TOKENS") out += "\n\n— Nova's answer was cut short. Ask Nova to continue. —";
+                return out;
+              }
             }
           }
           throw new Error("empty answer");
@@ -3290,6 +3295,10 @@
         var s = String(text == null ? "" : text);
         s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+        // A reply cut short mid-marker leaves a dangling ** that would
+        // otherwise show raw (build 13: "**Ad"). Strip any unmatched
+        // ** left over; matched pairs are already <strong> by now.
+        s = s.replace(/\*\*/g, "");
         return s;
       }
       // Classify a question by its exact text (the quick pills are known
