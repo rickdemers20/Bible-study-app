@@ -15,6 +15,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Inject the Gemini API key for Nova: the key lives in the
+      # GEMINI_API_KEY repo secret and must never be committed (public repo).
+      - name: Inject Gemini API key
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python3 - <<'PYEOF'
+          import os, pathlib
+          key = os.environ.get('GEMINI_API_KEY', '')
+          p = pathlib.Path('www/index.html')
+          s = p.read_text()
+          if key and '__GEMINI_API_KEY__' in s:
+              p.write_text(s.replace('__GEMINI_API_KEY__', key))
+              print('Gemini key injected')
+          else:
+              print('No Gemini key secret; placeholder left (Nova shows not-set-up)')
+          PYEOF
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -71,6 +88,23 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      # Inject the Gemini API key for Nova: the key lives in the
+      # GEMINI_API_KEY repo secret and must never be committed (public repo).
+      - name: Inject Gemini API key
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python3 - <<'PYEOF'
+          import os, pathlib
+          key = os.environ.get('GEMINI_API_KEY', '')
+          p = pathlib.Path('www/index.html')
+          s = p.read_text()
+          if key and '__GEMINI_API_KEY__' in s:
+              p.write_text(s.replace('__GEMINI_API_KEY__', key))
+              print('Gemini key injected')
+          else:
+              print('No Gemini key secret; placeholder left (Nova shows not-set-up)')
+          PYEOF
       - uses: actions/setup-node@v4
         with:
           node-version: 22

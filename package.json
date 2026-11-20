@@ -13,7 +13,8 @@
     "@capacitor/android": "^8.6.0",
     "@capacitor/cli": "^8.6.0",
     "@capacitor/core": "^8.6.0",
-    "@capacitor/ios": "^8.6.0"
+    "@capacitor/ios": "^8.6.0",
+    "capacitor-plugin-cdv-purchase": "^13.20.0"
   },
   "devDependencies": {
     "@capacitor/assets": "^4.0.0"
