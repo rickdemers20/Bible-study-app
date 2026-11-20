@@ -872,6 +872,10 @@
             whisper, and take your time with each step.
           </p>
           <div id="church-season"></div>
+
+          <h3 class="section-kicker">Saved prayers</h3>
+          <div id="nova-prayers-list"></div>
+
           <div class="prayer-form">
             <h3 class="prayer-form-heading">Need Prayer</h3>
             <p class="prayer-form-note">Your prayer request goes directly to <strong>The Salvation Army</strong> &mdash; one of their officers will pray for you.</p>
@@ -1351,6 +1355,9 @@
 
           <h3 class="section-kicker">Saved from Nova</h3>
           <div id="nova-saved-list"></div>
+
+          <h3 class="section-kicker">My study plans</h3>
+          <div id="nova-plans-list"></div>
 
           <div class="notes-actions" id="notes-actions">
             <div class="notes-actions-row">
@@ -2028,7 +2035,7 @@
           btn.textContent = dark ? "☀️ Day mode" : "🌙 Night mode";
         }
       })();
-      var store = { favorites: {}, notes: {}, premium: null, plans: null, novaSaved: [] };
+      var store = { favorites: {}, notes: {}, premium: null, plans: null, novaSaved: [], novaPrayers: [], novaPlans: [] };
       try {
         var raw = localStorage.getItem(STORE_KEY);
         if (raw) {
@@ -2051,6 +2058,21 @@
             if (Array.isArray(parsed.novaSaved)) {
               store.novaSaved = parsed.novaSaved.filter(function (e) {
                 return e && typeof e === "object" && typeof e.text === "string" && typeof e.topic === "string";
+              });
+            }
+            // Saved prayers (Build 13): prayers Nova wrote, kept on the
+            // Pray tab. Saved study plans (Build 13): plans Nova made,
+            // kept on My study. Same shape as novaSaved — { id, ref
+            // (refKey string or null), topic, text, savedAt } — and the
+            // same validation. Private, per device.
+            if (Array.isArray(parsed.novaPrayers)) {
+              store.novaPrayers = parsed.novaPrayers.filter(function (e) {
+                return e && typeof e === "object" && typeof e.text === "string" && typeof e.topic === "string" && (e.ref == null || typeof e.ref === "string");
+              });
+            }
+            if (Array.isArray(parsed.novaPlans)) {
+              store.novaPlans = parsed.novaPlans.filter(function (e) {
+                return e && typeof e === "object" && typeof e.text === "string" && typeof e.topic === "string" && (e.ref == null || typeof e.ref === "string");
               });
             }
           }
@@ -2522,6 +2544,7 @@
         if (id === "places" && !placesBuilt) { placesBuilt = true; buildPlaces(); }
         if (id === "people" && !peopleBuilt) { peopleBuilt = true; buildPeople(); }
         if (id === "saved") renderSaved();
+        if (id === "pray") renderPrayers();
         document.body.classList.remove("tabbar-hidden");
         var scroller = document.querySelector(".wrap");
         if (scroller) {
@@ -3185,8 +3208,16 @@
       var novaCurrentRef = null;
       var novaEls = null; // { status, log, input, askBtn, chips }
       var NOVA_DISCERNMENT = "Nova is an AI helper — not a teacher, and not Scripture. Always use your own discernment: check what Nova says against the Bible yourself.";
-      var NOVA_QUICK_VERSE = ["Explain this verse in plain words", "Help me pray about this verse", "Make a short study plan from this verse"];
-      var NOVA_QUICK_GENERAL = ["What does the Bible say about forgiveness?", "Help me write a prayer", "Make a 7-day study plan on faith"];
+      var NOVA_Q_EXPLAIN = "Explain this verse in plain words";
+      var NOVA_Q_PRAY_VERSE = "Help me pray about this verse";
+      var NOVA_Q_PLAN_VERSE = "Make a short study plan from this verse";
+      var NOVA_Q_PRAY_GENERAL = "Help me write a prayer";
+      var NOVA_Q_PLAN_GENERAL = "Make a 7-day study plan on faith";
+      // Pray first: Rick was taught to pray before studying, asking the
+      // Holy Spirit for wisdom before opening God's Word — so the prayer
+      // question leads each list. Same three pills each, same behavior.
+      var NOVA_QUICK_VERSE = [NOVA_Q_PRAY_VERSE, NOVA_Q_EXPLAIN, NOVA_Q_PLAN_VERSE];
+      var NOVA_QUICK_GENERAL = [NOVA_Q_PRAY_GENERAL, "What does the Bible say about forgiveness?", NOVA_Q_PLAN_GENERAL];
 
       function novaStatusText() {
         var st = novaTrialState();
@@ -3219,13 +3250,23 @@
         return "";
       }
 
-      // --- Save a Nova reply to My study (Build 12) -------------------------
-      // Verse-context replies go into the verse's own note (store.notes,
-      // keyed by refKey — the exact key the note sheet uses), so the answer
-      // shows under the verse in the Read view and in My study's notes list.
-      // A reply with no verse ref has nowhere to attach, so it goes into
-      // store.novaSaved, a standalone list shown under "Saved from Nova"
-      // in My study. Both are private, per device, like notes.
+      // --- Save a Nova reply to My study (Build 12; per-type in Build 13) ---
+      // Where a reply goes depends on what was asked (novaSaveType, keyed
+      // on the question text in novaLastQuestion):
+      //   explain ("Explain this verse in plain words") → the verse's own
+      //     note only, as in Build 12.
+      //   pray ("Help me pray about this verse" / "Help me write a
+      //     prayer") → BOTH the verse note (when there is a verse) AND the
+      //     "Saved prayers" list on the Pray tab; with no verse, prayers
+      //     only. The two copies are independent — removing one never
+      //     touches the other.
+      //   plan ("Make a short study plan from this verse" / "Make a 7-day
+      //     study plan on faith") → the "My study plans" list on My study
+      //     only, never the verse note — a plan is worked through over days.
+      //   anything else (incl. "What does the Bible say about
+      //     forgiveness?" and any typed question) → Build 12 behavior:
+      //     verse note if there is a verse ref, else "Saved from Nova".
+      // All of it is private, per device, like notes.
       var NOVA_SAVED_MARKER = "— From Nova —";
       var novaLastQuestion = null; // question behind the latest AI reply
       // Render AI text safely: escape HTML first, then bold only. Raw AI
@@ -3237,47 +3278,177 @@
         s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
         return s;
       }
-      // True when this exact answer is already saved where it would go,
-      // so a repeat tap (or a re-asked question, even in a later session)
-      // never saves or appends it twice. Checked before every save and
-      // when the Save button is first drawn — never just button state.
-      function novaIsSaved(ref, topic, text) {
-        if (ref) {
-          var note = store.notes[refKey(ref)];
-          return !!note && note.indexOf(text) !== -1;
-        }
-        if (!Array.isArray(store.novaSaved)) return false;
-        for (var i = 0; i < store.novaSaved.length; i++) {
-          var e = store.novaSaved[i];
+      // Classify a question by its exact text (the quick pills are known
+      // constants; a typed question matching one counts the same way).
+      // Returns "explain" | "pray" | "plan" | "general".
+      function novaSaveType(topic) {
+        if (topic === NOVA_Q_EXPLAIN) return "explain";
+        if (topic === NOVA_Q_PRAY_VERSE || topic === NOVA_Q_PRAY_GENERAL) return "pray";
+        if (topic === NOVA_Q_PLAN_VERSE || topic === NOVA_Q_PLAN_GENERAL) return "plan";
+        return "general";
+      }
+      // Destinations for one reply: "note" (verse note), "prayers" (Saved
+      // prayers), "plans" (My study plans), "saved" (Saved from Nova).
+      function novaDestinations(ref, topic) {
+        var type = novaSaveType(topic);
+        if (type === "explain") return ref ? ["note"] : ["saved"];
+        if (type === "pray") return ref ? ["note", "prayers"] : ["prayers"];
+        if (type === "plan") return ["plans"];
+        return ref ? ["note"] : ["saved"];
+      }
+      function novaListHas(list, topic, text) {
+        if (!Array.isArray(list)) return false;
+        for (var i = 0; i < list.length; i++) {
+          var e = list[i];
           if (e && e.topic === topic && e.text === text) return true;
         }
         return false;
       }
+      function novaNoteHas(ref, text) {
+        if (!ref) return false;
+        var note = store.notes[refKey(ref)];
+        return !!note && note.indexOf(text) !== -1;
+      }
+      function novaListEntry(ref, topic, text, prefix) {
+        return {
+          id: prefix + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),
+          ref: ref ? refKey(ref) : null,
+          topic: topic || "",
+          text: text,
+          savedAt: Date.now()
+        };
+      }
+      // True only when this exact answer is already present in ALL of its
+      // destinations for its type, so a re-tap after deleting from one list
+      // re-adds just the missing copy, never a duplicate. Checked before
+      // every save and when the Save button is first drawn — never just
+      // button state — so dedupe survives reopening the sheet.
+      function novaIsSaved(ref, topic, text) {
+        var dests = novaDestinations(ref, topic);
+        for (var i = 0; i < dests.length; i++) {
+          var d = dests[i];
+          if (d === "note" && !novaNoteHas(ref, text)) return false;
+          if (d === "prayers" && !novaListHas(store.novaPrayers, topic, text)) return false;
+          if (d === "plans" && !novaListHas(store.novaPlans, topic, text)) return false;
+          if (d === "saved" && !novaListHas(store.novaSaved, topic, text)) return false;
+        }
+        return dests.length > 0;
+      }
       // Save one AI reply. Returns true when something new was stored.
-      // Verse note: appends after the user's own words with a clear
-      // "— From Nova —" marker, never overwriting them; a fresh note is
-      // just the marker plus the answer, so it never reads as his own
-      // words or as Scripture. No-ref reply: standalone list entry.
+      // Writes only to destinations missing it — no double-appends, no
+      // duplicate list entries. Verse note: appends after the user's own
+      // words with a clear "— From Nova —" marker, never overwriting them;
+      // a fresh note is just the marker plus the answer, so it never reads
+      // as his own words or as Scripture. No-ref reply: standalone entry.
       function novaSaveReply(ref, topic, text) {
         if (novaIsSaved(ref, topic, text)) return false;
-        if (ref) {
-          var key = refKey(ref);
-          var marked = NOVA_SAVED_MARKER + "\n" + text;
-          var existing = store.notes[key];
-          store.notes[key] = existing ? (existing + "\n\n" + marked) : marked;
-          persist();
-          renderChapter(false);
-        } else {
-          if (!Array.isArray(store.novaSaved)) store.novaSaved = [];
-          store.novaSaved.push({
-            id: "ns" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),
-            topic: topic || "",
-            text: text,
-            savedAt: Date.now()
-          });
-          persist();
+        var dests = novaDestinations(ref, topic);
+        var wrote = false, wroteNote = false;
+        for (var i = 0; i < dests.length; i++) {
+          var d = dests[i];
+          if (d === "note") {
+            if (!novaNoteHas(ref, text)) {
+              var key = refKey(ref);
+              var marked = NOVA_SAVED_MARKER + "\n" + text;
+              var existing = store.notes[key];
+              store.notes[key] = existing ? (existing + "\n\n" + marked) : marked;
+              wrote = true; wroteNote = true;
+            }
+          } else if (d === "prayers") {
+            if (!novaListHas(store.novaPrayers, topic, text)) {
+              if (!Array.isArray(store.novaPrayers)) store.novaPrayers = [];
+              store.novaPrayers.push(novaListEntry(ref, topic, text, "np"));
+              wrote = true;
+            }
+          } else if (d === "plans") {
+            if (!novaListHas(store.novaPlans, topic, text)) {
+              if (!Array.isArray(store.novaPlans)) store.novaPlans = [];
+              store.novaPlans.push(novaListEntry(ref, topic, text, "npl"));
+              wrote = true;
+            }
+          } else if (d === "saved") {
+            if (!novaListHas(store.novaSaved, topic, text)) {
+              if (!Array.isArray(store.novaSaved)) store.novaSaved = [];
+              store.novaSaved.push(novaListEntry(ref, topic, text, "ns"));
+              wrote = true;
+            }
+          }
         }
+        if (!wrote) return false;
+        persist();
+        if (wroteNote) renderChapter(false);
+        if (dests.indexOf("prayers") !== -1) renderPrayers();
+        if (dests.indexOf("plans") !== -1 || dests.indexOf("saved") !== -1) renderSaved();
         return true;
+      }
+      // Newest first; entries saved in the same millisecond keep reverse
+      // insertion order, so the most recently added is always on top.
+      function novaNewestFirst(list) {
+        var arr = (Array.isArray(list) ? list.slice() : []).map(function (e, i) { return { e: e, i: i }; });
+        arr.sort(function (a, b) { return (b.e.savedAt || 0) - (a.e.savedAt || 0) || (b.i - a.i); });
+        return arr.map(function (w) { return w.e; });
+      }
+      // Saved prayers, on the Pray tab. Newest first; each entry shows its
+      // verse reference (or the question when there is no verse) and the
+      // prayer text. Remove deletes just that entry — never the verse note.
+      function renderPrayers() {
+        var box = $("nova-prayers-list");
+        if (!box) return;
+        box.innerHTML = "";
+        var prayers = novaNewestFirst(store.novaPrayers);
+        if (prayers.length === 0) {
+          box.appendChild(el("p", "empty-note", "No saved prayers yet. Tap “Save to My study” under a prayer Nova writes for you to keep it here."));
+          return;
+        }
+        prayers.forEach(function (entry) {
+          var card = el("div", "card");
+          var label = entry.topic || "Saved prayer";
+          if (entry.ref && /^\d+:\d+:\d+$/.test(entry.ref)) label = formatRef(parseKey(entry.ref));
+          card.appendChild(el("span", "card-ref", label));
+          var body = el("p", "card-note");
+          body.innerHTML = novaRichText(entry.text);
+          card.appendChild(body);
+          var rm = el("button", "card-link", "Remove");
+          rm.type = "button";
+          rm.addEventListener("click", function () {
+            store.novaPrayers = store.novaPrayers.filter(function (e) { return e.id !== entry.id; });
+            persist();
+            renderPrayers();
+          });
+          card.appendChild(rm);
+          box.appendChild(card);
+        });
+      }
+      // My study plans, on the My study tab (called from renderSaved).
+      // Newest first; each entry keeps its verse/topic reference, the plan
+      // text, and a Remove button. Remove deletes just that entry.
+      function renderNovaPlans() {
+        var box = $("nova-plans-list");
+        if (!box) return;
+        box.innerHTML = "";
+        var plans = novaNewestFirst(store.novaPlans);
+        if (plans.length === 0) {
+          box.appendChild(el("p", "empty-note", "No study plans saved yet. Tap “Save to My study” under a study plan Nova makes for you to keep it here."));
+          return;
+        }
+        plans.forEach(function (entry) {
+          var card = el("div", "card");
+          var label = entry.topic || "Study plan";
+          if (entry.ref && /^\d+:\d+:\d+$/.test(entry.ref)) label = formatRef(parseKey(entry.ref));
+          card.appendChild(el("span", "card-ref", label));
+          var body = el("p", "card-note");
+          body.innerHTML = novaRichText(entry.text);
+          card.appendChild(body);
+          var rm = el("button", "card-link", "Remove");
+          rm.type = "button";
+          rm.addEventListener("click", function () {
+            store.novaPlans = store.novaPlans.filter(function (e) { return e.id !== entry.id; });
+            persist();
+            renderSaved();
+          });
+          card.appendChild(rm);
+          box.appendChild(card);
+        });
       }
 
       function novaAddMsg(kind, text, saveable) {
@@ -3941,8 +4112,7 @@
         // attach to). Verse-context replies live in the verse's own note
         // above, not here. Newest first; Remove deletes just that entry.
         if (novaBox) {
-          var saved = Array.isArray(store.novaSaved) ? store.novaSaved.slice() : [];
-          saved.sort(function (a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+          var saved = novaNewestFirst(store.novaSaved);
           if (saved.length === 0) {
             novaBox.appendChild(el("p", "empty-note", "Nothing saved from Nova yet. Tap “Save to My study” under any Nova reply to keep it here."));
           }
@@ -3963,6 +4133,10 @@
             novaBox.appendChild(card);
           });
         }
+
+        // My study plans: plans Nova made, kept apart from the verse note
+        // (a plan is worked through over days). Rendered by its sibling.
+        renderNovaPlans();
       }
 
       // --- Print, save & import notes ---------------------------------------------
