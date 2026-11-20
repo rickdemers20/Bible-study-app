@@ -229,6 +229,12 @@
       .chapter-title { margin: 0.5rem 0 0; text-align: center; font-family: var(--serif); font-size: 30px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
       .chapter-sub { margin: 0.25rem 0 0; text-align: center; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); }
       .chapter-hint { margin: 0.3rem 0 0; text-align: center; font-size: 14px; color: var(--dim); font-style: italic; }
+      /* "Go to verse" jump box (Build 14): small and quiet, under the
+         chapter heading — same wiring as the Search tab's reference form. */
+      .jump-form { margin: 0.75rem auto 0; max-width: 24rem; }
+      .jump-form .form-label { display: block; text-align: center; }
+      .jump-form .form-flex { margin-top: 0.35rem; }
+      .jump-note { margin: 0.45rem 0 0; text-align: center; font-size: 14px; font-style: italic; color: var(--dim); }
       .watch-row { margin-top: 0.4rem; text-align: center; }
 
       /* Verses */
@@ -838,6 +844,14 @@
 
           <h2 class="chapter-title" id="chapter-title"></h2>
           <p class="chapter-sub" id="chapter-sub"></p>
+          <form class="jump-form" id="jump-form">
+            <label class="form-label" for="jump-input">Go to verse</label>
+            <div class="form-flex">
+              <input id="jump-input" type="text" placeholder="John 3:16" autocomplete="off" aria-label="Go to a verse, for example John 3:16" />
+              <button type="submit" class="btn btn-outline-accent btn-small">Go</button>
+            </div>
+            <p class="jump-note" id="jump-note" hidden></p>
+          </form>
           <p class="chapter-hint">
             Tap an underlined word to look it up — Webster's 1828 for the
             everyday words, Easton's Bible Dictionary for the names, places,
@@ -3947,6 +3961,28 @@
         box.appendChild(list);
       }
 
+      // --- "Go to verse" jump box on the Read tab (Build 14) ----------------
+      // Same wiring as the Search tab's reference form: parseReference(),
+      // then openRef() to jump and highlight. A reference that doesn't
+      // parse shows a short note and stays put — never a wrong verse.
+      function wireJump() {
+        $("jump-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          var input = $("jump-input").value.trim();
+          var note = $("jump-note");
+          note.hidden = true;
+          note.textContent = "";
+          if (!input) return;
+          var ref = parseReference(input);
+          if (ref) {
+            openRef(ref);
+          } else {
+            note.textContent = "Couldn't find that verse — try John 3:16";
+            note.hidden = false;
+          }
+        });
+      }
+
       function wireSearch() {
         $("ref-form").addEventListener("submit", function (e) {
           e.preventDefault();
@@ -6674,6 +6710,7 @@
         renderChapter(false);
         renderPlans();
         wireSearch();
+        wireJump();
         wireWords();
         // Premium store (native only; no-op on the web). Registers the two
         // subscription products so an active purchase / Offer Code restores
