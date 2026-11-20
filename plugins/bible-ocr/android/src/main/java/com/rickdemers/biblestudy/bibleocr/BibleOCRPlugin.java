@@ -18,8 +18,6 @@ import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
-import org.json.JSONException;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -73,23 +71,19 @@ public class BibleOCRPlugin extends Plugin {
         InputImage image = InputImage.fromBitmap(bitmap, 0);
         recognizer.process(image)
                 .addOnSuccessListener(text -> {
-                    try {
-                        JSArray lines = new JSArray();
-                        for (Line line : orderLines(extractLines(text, bitmap))) {
-                            JSObject o = new JSObject();
-                            o.put("text", line.text);
-                            o.put("x", line.x);
-                            o.put("y", line.y);
-                            o.put("width", line.width);
-                            o.put("height", line.height);
-                            lines.put(o);
-                        }
-                        JSObject result = new JSObject();
-                        result.put("lines", lines);
-                        call.resolve(result);
-                    } catch (JSONException e) {
-                        call.reject("Text recognition failed: " + e.getMessage(), "RECOGNITION_FAILED");
+                    JSArray lines = new JSArray();
+                    for (Line line : orderLines(extractLines(text, bitmap))) {
+                        JSObject o = new JSObject();
+                        o.put("text", line.text);
+                        o.put("x", line.x);
+                        o.put("y", line.y);
+                        o.put("width", line.width);
+                        o.put("height", line.height);
+                        lines.put(o);
                     }
+                    JSObject result = new JSObject();
+                    result.put("lines", lines);
+                    call.resolve(result);
                 })
                 .addOnFailureListener(e ->
                         call.reject("Text recognition failed: " + e.getMessage(), "RECOGNITION_FAILED"));

@@ -1,8 +1,8 @@
+// swift-tools-version: 5.9
 // NOTE: the package/product/target name MUST be "BibleOcr" — that is
 // fixName("bible-ocr") as computed by the Capacitor CLI, and it is the name
 // `npx cap sync ios` writes into ios/App/CapApp-SPM/Package.swift.
 // (The Swift class and the JS plugin name stay "BibleOCR".)
-// swift-tools-version: 5.9
 import PackageDescription
 
 let package = Package(
