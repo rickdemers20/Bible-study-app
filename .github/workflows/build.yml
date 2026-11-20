@@ -85,7 +85,11 @@ jobs:
 
   ios:
     name: iOS build (unsigned, or signed .ipa when secrets are set)
-    runs-on: macos-latest
+    # NOTE (Nov 20, 2026): macos-latest (arm64) runners were capacity-starved —
+    # the job sat queued ~15 min twice and GitHub cancelled it ("not acquired
+    # by Runner of type hosted even after multiple attempts"). macos-15-intel
+    # is the runner the RollOnRV workflow uses successfully.
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       # Inject the Gemini API key for Nova: the key lives in the
