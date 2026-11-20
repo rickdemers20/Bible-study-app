@@ -1349,6 +1349,9 @@
           <h3 class="section-kicker">My notes</h3>
           <div id="note-list"></div>
 
+          <h3 class="section-kicker">Saved from Nova</h3>
+          <div id="nova-saved-list"></div>
+
           <div class="notes-actions" id="notes-actions">
             <div class="notes-actions-row">
               <button type="button" class="btn btn-accent" id="print-notes-btn">Print my notes</button>
@@ -2025,7 +2028,7 @@
           btn.textContent = dark ? "☀️ Day mode" : "🌙 Night mode";
         }
       })();
-      var store = { favorites: {}, notes: {}, premium: null, plans: null };
+      var store = { favorites: {}, notes: {}, premium: null, plans: null, novaSaved: [] };
       try {
         var raw = localStorage.getItem(STORE_KEY);
         if (raw) {
@@ -2041,6 +2044,14 @@
                 active: (parsed.plans.active && typeof parsed.plans.active === "object") ? parsed.plans.active : null,
                 completed: (parsed.plans.completed && typeof parsed.plans.completed === "object") ? parsed.plans.completed : {}
               };
+            }
+            // Saved Nova replies with no verse to attach to (general
+            // questions). Verse-context replies live in store.notes on
+            // the verse instead — see novaSaveReply. Private, per device.
+            if (Array.isArray(parsed.novaSaved)) {
+              store.novaSaved = parsed.novaSaved.filter(function (e) {
+                return e && typeof e === "object" && typeof e.text === "string" && typeof e.topic === "string";
+              });
             }
           }
         }
@@ -3208,13 +3219,76 @@
         return "";
       }
 
-      function novaAddMsg(kind, text) {
+      // --- Save a Nova reply to My study (Build 12) -------------------------
+      // Verse-context replies go into the verse's own note (store.notes,
+      // keyed by refKey — the exact key the note sheet uses), so the answer
+      // shows under the verse in the Read view and in My study's notes list.
+      // A reply with no verse ref has nowhere to attach, so it goes into
+      // store.novaSaved, a standalone list shown under "Saved from Nova"
+      // in My study. Both are private, per device, like notes.
+      var NOVA_SAVED_MARKER = "— From Nova —";
+      var novaLastQuestion = null; // question behind the latest AI reply
+      // Render AI text safely: escape HTML first, then bold only. Raw AI
+      // text is never injected as HTML. (Italics deliberately skipped:
+      // single * must never match inside the <strong> tags just made.)
+      function novaRichText(text) {
+        var s = String(text == null ? "" : text);
+        s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+        return s;
+      }
+      // True when this exact answer is already saved where it would go,
+      // so a repeat tap (or a re-asked question, even in a later session)
+      // never saves or appends it twice. Checked before every save and
+      // when the Save button is first drawn — never just button state.
+      function novaIsSaved(ref, topic, text) {
+        if (ref) {
+          var note = store.notes[refKey(ref)];
+          return !!note && note.indexOf(text) !== -1;
+        }
+        if (!Array.isArray(store.novaSaved)) return false;
+        for (var i = 0; i < store.novaSaved.length; i++) {
+          var e = store.novaSaved[i];
+          if (e && e.topic === topic && e.text === text) return true;
+        }
+        return false;
+      }
+      // Save one AI reply. Returns true when something new was stored.
+      // Verse note: appends after the user's own words with a clear
+      // "— From Nova —" marker, never overwriting them; a fresh note is
+      // just the marker plus the answer, so it never reads as his own
+      // words or as Scripture. No-ref reply: standalone list entry.
+      function novaSaveReply(ref, topic, text) {
+        if (novaIsSaved(ref, topic, text)) return false;
+        if (ref) {
+          var key = refKey(ref);
+          var marked = NOVA_SAVED_MARKER + "\n" + text;
+          var existing = store.notes[key];
+          store.notes[key] = existing ? (existing + "\n\n" + marked) : marked;
+          persist();
+          renderChapter(false);
+        } else {
+          if (!Array.isArray(store.novaSaved)) store.novaSaved = [];
+          store.novaSaved.push({
+            id: "ns" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),
+            topic: topic || "",
+            text: text,
+            savedAt: Date.now()
+          });
+          persist();
+        }
+        return true;
+      }
+
+      function novaAddMsg(kind, text, saveable) {
         var wrap = el("div", "nova-msg nova-" + kind);
         if (kind === "ai") {
           var tag = el("span", "nova-ai-tag", "Nova · AI");
           wrap.appendChild(tag);
         }
-        var p = el("p", "nova-msg-text", text);
+        var p = el("p", "nova-msg-text");
+        if (kind === "ai") p.innerHTML = novaRichText(text);
+        else p.textContent = text;
         wrap.appendChild(p);
         if (kind === "ai") {
           var row = el("div", "row nova-listen-row");
@@ -3222,6 +3296,25 @@
           lb.type = "button";
           lb.addEventListener("click", function () { novaSpeakFree(text, lb); });
           row.appendChild(lb);
+          // Save to My study — on every AI reply, whatever was asked.
+          // Error messages (saveable === false) get no Save button:
+          // "Sorry — Nova couldn't answer" is not something to keep.
+          if (saveable !== false) {
+            var savedRef = novaCurrentRef;
+            var savedTopic = novaLastQuestion;
+            var sb = el("button", "btn btn-outline btn-small", "Save to My study");
+            sb.type = "button";
+            if (novaIsSaved(savedRef, savedTopic, text)) {
+              sb.textContent = "Saved ✓";
+              sb.disabled = true;
+            }
+            sb.addEventListener("click", function () {
+              novaSaveReply(savedRef, savedTopic, text);
+              sb.textContent = "Saved ✓";
+              sb.disabled = true;
+            });
+            row.appendChild(sb);
+          }
           if (novaTrialState() === "premium") {
             var gb = el("button", "btn btn-outline-accent btn-small", "Gemini voice");
             gb.type = "button";
@@ -3240,6 +3333,7 @@
         if (!question || !novaEls) return;
         var access = novaAccess();
         if (!access.ok) { novaRefreshStatus(); return; }
+        novaLastQuestion = question;
         novaAddMsg("user", question);
         novaEls.input.value = "";
         var thinking = el("p", "nova-thinking", "Nova is thinking…");
@@ -3261,7 +3355,7 @@
           var msg = "Sorry — Nova couldn't answer just now. Please check your connection and try again.";
           if (err && err.status === 429) msg = "Nova is getting a lot of questions right now. Please wait a minute and try again.";
           if (err && (err.status === 400 || err.status === 403)) msg = "Nova isn't set up right — the app's AI key needs attention. Everything else in the app still works.";
-          novaAddMsg("ai", msg);
+          novaAddMsg("ai", msg, false);
           novaRefreshStatus();
         });
       }
@@ -3778,7 +3872,9 @@
       function renderSaved() {
         var favBox = $("fav-list");
         var noteBox = $("note-list");
+        var novaBox = $("nova-saved-list");
         favBox.innerHTML = ""; noteBox.innerHTML = "";
+        if (novaBox) novaBox.innerHTML = "";
         var favKeys = Object.keys(store.favorites);
         var noteKeys = Object.keys(store.notes);
         var byRef = function (a, b) {
@@ -3840,6 +3936,33 @@
           card.appendChild(ed);
           noteBox.appendChild(card);
         });
+
+        // Saved from Nova: replies to general questions (no verse to
+        // attach to). Verse-context replies live in the verse's own note
+        // above, not here. Newest first; Remove deletes just that entry.
+        if (novaBox) {
+          var saved = Array.isArray(store.novaSaved) ? store.novaSaved.slice() : [];
+          saved.sort(function (a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+          if (saved.length === 0) {
+            novaBox.appendChild(el("p", "empty-note", "Nothing saved from Nova yet. Tap “Save to My study” under any Nova reply to keep it here."));
+          }
+          saved.forEach(function (entry) {
+            var card = el("div", "card");
+            card.appendChild(el("span", "card-ref", entry.topic || "Saved from Nova"));
+            var body = el("p", "card-note");
+            body.innerHTML = novaRichText(entry.text);
+            card.appendChild(body);
+            var rm = el("button", "card-link", "Remove");
+            rm.type = "button";
+            rm.addEventListener("click", function () {
+              store.novaSaved = store.novaSaved.filter(function (e) { return e.id !== entry.id; });
+              persist();
+              renderSaved();
+            });
+            card.appendChild(rm);
+            novaBox.appendChild(card);
+          });
+        }
       }
 
       // --- Print, save & import notes ---------------------------------------------
