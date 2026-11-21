@@ -241,6 +241,14 @@
       .snap-candidates { margin: 0.5rem auto 0; max-width: 24rem; display: grid; gap: 0.35rem; }
       .snap-candidates button { display: block; width: 100%; text-align: left; font: inherit; font-size: 15px; color: inherit; background: none; border: 1px solid var(--dim); border-radius: 8px; padding: 0.45rem 0.6rem; cursor: pointer; }
       .snap-candidates button:active { background: var(--accent-soft); }
+      /* Bible version switch (Build 18): KJV / WEB toggle, same 24rem column as the snap row. */
+      .version-row { margin: 0.6rem auto 0; max-width: 24rem; text-align: center; }
+      .version-toggle { display: inline-flex; border: 1px solid var(--accent); border-radius: 999px; overflow: hidden; }
+      .version-toggle button { background: transparent; color: var(--accent); border: 0; min-height: 40px; padding: 0.35rem 1.25rem; font-size: 14px; font-weight: 600; cursor: pointer; }
+      .version-toggle button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+      .version-note { margin: 0.35rem 0 0; font-size: 13px; color: var(--dim); }
+      .verse-empty { font-style: italic; color: var(--dim); }
+      .wordnet-license { font-size: 12px; line-height: 1.5; }
       .watch-row { margin-top: 0.4rem; text-align: center; }
 
       /* Verses */
@@ -739,7 +747,8 @@
           <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false">🌙 Night mode</button>
         </div>
         <p>
-          The <strong>King James Bible</strong> with <strong>Webster's 1828 dictionary</strong>
+          The <strong>King James Bible</strong> and the <strong>World English Bible</strong>
+          with <strong>Webster's 1828 dictionary</strong>, <strong>WordNet</strong>,
           and <strong>Easton's Bible Dictionary</strong>,
           a basic Hebrew learner, the lands of the Bible in pictures and maps, and your own
           private study notes — free for everyone, from rickdemers.com.
@@ -863,7 +872,14 @@
             <p class="snap-hint">Hold the page flat, fill the frame, good light.</p>
           </div>
           <div class="snap-candidates" id="snap-candidates" hidden></div>
-          <p class="chapter-hint">
+          <div class="version-row" role="group" aria-label="Bible version">
+            <div class="version-toggle">
+              <button type="button" id="version-kjv" aria-pressed="true">KJV</button>
+              <button type="button" id="version-web" aria-pressed="false">WEB</button>
+            </div>
+            <p class="version-note" id="version-note">King James Version</p>
+          </div>
+          <p class="chapter-hint" id="chapter-hint">
             Tap an underlined word to look it up — Webster's 1828 for the
             everyday words, Easton's Bible Dictionary for the names, places,
             and Bible terms. Only words found in one of them are underlined.
@@ -1877,12 +1893,21 @@
 
         <footer class="site-foot">
           <p>
-            Scripture: the King James Version (public domain). Definitions:
+            Scripture: the King James Version (public domain) and the
+            World English Bible (WEB), public domain — eBible.org. Definitions:
             Noah Webster's <em>American Dictionary of the English Language</em>, 1828,
             and M. G. Easton's <em>Illustrated Bible Dictionary</em>, 1897
-            (both public domain). Place photos: Wikimedia Commons, credited under each photo.
+            (both public domain); definitions from WordNet 3.1, Princeton University,
+            <a href="https://wordnet.princeton.edu/" target="_blank" rel="noopener">wordnet.princeton.edu</a>,
+            used under the WordNet license. Place photos: Wikimedia Commons, credited under each photo.
             Videos: BibleProject, on YouTube.
           </p>
+          <p class="wordnet-license">WordNet Release 3.0</p>
+          <p class="wordnet-license">This software and database is being provided to you, the LICENSEE, by Princeton University under the following license. By obtaining, using and/or copying this software and database, you agree that you have read, understood, and will comply with these terms and conditions.:</p>
+          <p class="wordnet-license">Permission to use, copy, modify and distribute this software and database and its documentation for any purpose and without fee or royalty is hereby granted, provided that you agree to comply with the following copyright notice and statements, including the disclaimer, and that the same appear on ALL copies of the software, database and documentation, including modifications that you make for internal use or for distribution.</p>
+          <p class="wordnet-license">WordNet 3.0 Copyright 2006 by Princeton University. All rights reserved.</p>
+          <p class="wordnet-license">THIS SOFTWARE AND DATABASE IS PROVIDED "AS IS" AND PRINCETON UNIVERSITY MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED. BY WAY OF EXAMPLE, BUT NOT LIMITATION, PRINCETON UNIVERSITY MAKES NO REPRESENTATIONS OR WARRANTIES OF MERCHANTABILITY OR FITNESS FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE LICENSED SOFTWARE, DATABASE OR DOCUMENTATION WILL NOT INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS.</p>
+          <p class="wordnet-license">The name of Princeton University or Princeton may not be used in advertising or publicity pertaining to distribution of the software and/or database. Title to copyright in this software, database and any associated documentation shall at all times remain with Princeton University and LICENSEE agrees to preserve same.</p>
           <p>A page from <a href="https://rickdemers.com/" target="_blank" rel="noopener">rickdemers.com</a> · Built by Rick Demers.</p>
         </footer>
       </main>
@@ -1966,6 +1991,23 @@
       var DICTS_READY = false;
       var pendingWord = null;
       var defCache = {};
+      // --- Bible version (KJV / WEB, Build 18) — saved per device, KJV default ---
+      // Same pattern as THEME_KEY: its own localStorage key, try/catch, and
+      // the stored value is read before the first render in boot().
+      var VERSION_KEY = "rickdemers-bible-study-version";
+      var bibleVersion = "kjv";
+      try {
+        var savedVersion = localStorage.getItem(VERSION_KEY);
+        if (savedVersion === "web" || savedVersion === "kjv") bibleVersion = savedVersion;
+      } catch (e) {}
+      var WEB = null;
+      var WEB_READY = false;
+      var WORDNET = null; // { lemma: gloss } — WordNet subset for WEB mode
+      var WN_READY = false;
+      var wordnetPromise = null;
+      var wnDefCache = {}; // boolean cache for WEB mode — never reuse defCache
+      function isWebMode() { return bibleVersion === "web"; }
+      function activeBible() { return bibleVersion === "web" ? WEB : KJV; }
       // Set while the print view is open: the heavy background work the
       // reader normally does right after boot (dictionary downloads and
       // the chapter re-render they trigger) is held back until the print
@@ -2135,7 +2177,7 @@
       };
 
       // --- Bible data helpers ------------------------------------------------
-      function bookName(bi) { return KJV[bi] ? KJV[bi].name : ""; }
+      function bookName(bi) { var bible = activeBible() || KJV; return bible[bi] ? bible[bi].name : ""; }
       function verseText(ref) {
         var b = KJV[ref.bookIndex];
         if (!b) return null;
@@ -2143,6 +2185,24 @@
         if (!ch) return null;
         var t = ch[ref.verse - 1];
         return t == null ? null : t;
+      }
+      function activeVerseText(ref) {
+        var bible = activeBible() || KJV;
+        var b = bible[ref.bookIndex];
+        if (!b) return null;
+        var ch = b.chapters[ref.chapter - 1];
+        if (!ch) return null;
+        var t = ch[ref.verse - 1];
+        return t == null ? null : t;
+      }
+      // Verse text for saved cards in the active version; a verse the WEB
+      // does not have (empty or out of range) shows the plain note instead
+      // of a blank card — never a silent KJV fallback.
+      function savedCardText(ref) {
+        var t = activeVerseText(ref);
+        if (t) return t;
+        if (isWebMode()) return "This verse is not in the WEB text.";
+        return "";
       }
       function formatRef(ref) { return bookName(ref.bookIndex) + " " + ref.chapter + ":" + ref.verse; }
       function refKey(r) { return r.bookIndex + ":" + r.chapter + ":" + r.verse; }
@@ -2187,11 +2247,12 @@
         var verse = m[3] ? Number(m[3]) : 1;
         var bookIndex = BOOK_ALIASES[bookPart];
         if (bookIndex === undefined) {
-          var hit = KJV.findIndex(function (b) { return b.name.toLowerCase().indexOf(bookPart) === 0; });
+          var bible = activeBible() || KJV;
+          var hit = bible.findIndex(function (b) { return b.name.toLowerCase().indexOf(bookPart) === 0; });
           if (hit >= 0) bookIndex = hit;
         }
         if (bookIndex === undefined) return null;
-        var book = KJV[bookIndex];
+        var book = (activeBible() || KJV)[bookIndex];
         if (!book || chapter < 1 || chapter > book.chapters.length) return null;
         var cv = book.chapters[chapter - 1];
         if (!cv || verse < 1 || verse > cv.length) return null;
@@ -2379,20 +2440,72 @@
         if (b.indexOf("-") !== -1) { b.split("-").forEach(add); }
         return out;
       }
+      // --- WordNet lookup (Build 18) — exact port of the reference
+      // implementation in LOOKUP_SPEC.md §4 (normalization → BLOCKED →
+      // apostrophe/NTABLE → direct hit → suffix candidates, first hit
+      // wins). BLOCKED (88) and NTABLE (22) are copied from that spec;
+      // never hand-edit a gloss — the shipped file is verbatim WordNet.
+      var WN_BLOCKED = {"a": 1, "ai": 1, "alexander": 1, "ammonite": 1, "an": 1, "annas": 1, "aquila": 1, "ar": 1, "asher": 1, "at": 1, "barber": 1, "bel": 1, "ben": 1, "benjamin": 1, "beth": 1, "but": 1, "by": 1, "can": 1, "carmelite": 1, "dodo": 1, "donkey": 1, "ebed": 1, "el": 1, "en": 1, "er": 1, "even": 1, "fowler": 1, "fuller": 1, "gad": 1, "ham": 1, "he": 1, "heth": 1, "his": 1, "i": 1, "in": 1, "ir": 1, "ira": 1, "it": 1, "its": 1, "jacob": 1, "james": 1, "jared": 1, "javan": 1, "jether": 1, "job": 1, "john": 1, "jonathan": 1, "judas": 1, "like": 1, "lot": 1, "may": 1, "me": 1, "med": 1, "mica": 1, "mine": 1, "mol": 1, "mole": 1, "mount": 1, "must": 1, "needle": 1, "nob": 1, "o": 1, "obed": 1, "oded": 1, "oh": 1, "on": 1, "or": 1, "peter": 1, "pharisee": 1, "philistine": 1, "pileser": 1, "pul": 1, "queen": 1, "ram": 1, "roi": 1, "ruth": 1, "salmon": 1, "scribe": 1, "shan": 1, "shittim": 1, "shua": 1, "tabor": 1, "tarsus": 1, "timothy": 1, "tubal": 1, "us": 1, "who": 1, "will": 1};
+      var WN_NTABLE = {"ain": "be", "aren": "be", "can": "can", "couldn": "could", "daren": "dare", "didn": "do", "doesn": "do", "don": "do", "hadn": "have", "hasn": "have", "haven": "have", "isn": "be", "mightn": "might", "mustn": "must", "needn": "need", "oughtn": "ought", "shan": "shall", "shouldn": "should", "wasn": "be", "weren": "be", "won": "will", "wouldn": "would"};
+      function wnHas(map, key) { return Object.prototype.hasOwnProperty.call(map, key); }
+      function wnDoubled(stem) { return stem.length >= 2 && stem.charAt(stem.length - 1) === stem.charAt(stem.length - 2); }
+      function wordnetLookup(word, map) {
+        if (!map) return null;
+        var w = String(word).replace(/[\u2018\u2019]/g, "'").toLowerCase().replace(/^'+|'+$/g, "");
+        if (w === "") return null;
+        if (wnHas(WN_BLOCKED, w)) return null;
+        var apos = w.indexOf("'");
+        if (apos >= 0) {
+          var left = w.slice(0, apos);
+          var rest = w.slice(apos + 1);
+          if (rest === "t") {
+            if (!wnHas(WN_NTABLE, left)) return null;
+            return wordnetLookup(WN_NTABLE[left], map);
+          }
+          return wordnetLookup(left, map);
+        }
+        if (wnHas(map, w)) return w;
+        var cands = [];
+        if (w.endsWith("ies") && w.length > 4) { cands.push(w.slice(0, -3) + "y"); cands.push(w.slice(0, -3) + "ie"); }
+        if (w.endsWith("s") && w.length > 2 && !w.endsWith("sses")) { cands.push(w.slice(0, -1)); }
+        if (w.endsWith("es") && w.length > 3) { cands.push(w.slice(0, -2)); cands.push(w.slice(0, -2) + "e"); }
+        if (w.endsWith("ing") && w.length > 4) { var stem = w.slice(0, -3); cands.push(stem); cands.push(stem + "e"); if (wnDoubled(stem)) cands.push(stem.slice(0, -1)); }
+        if (w.endsWith("ed") && w.length > 3) { var base = w.slice(0, -2); cands.push(base + "e"); cands.push(base); if (w.endsWith("ied")) cands.push(w.slice(0, -3) + "y"); if (wnDoubled(base)) cands.push(base.slice(0, -1)); }
+        if (w.endsWith("est") && w.length > 5) { if (w.endsWith("iest")) cands.push(w.slice(0, -4) + "y"); var baseEst = w.slice(0, -3); cands.push(baseEst); cands.push(baseEst + "e"); if (wnDoubled(baseEst)) cands.push(baseEst.slice(0, -1)); }
+        else if (w.endsWith("er") && w.length > 4) { if (w.endsWith("ier")) cands.push(w.slice(0, -3) + "y"); var baseEr = w.slice(0, -2); cands.push(baseEr); cands.push(baseEr + "e"); if (wnDoubled(baseEr)) cands.push(baseEr.slice(0, -1)); }
+        if (w.endsWith("ly") && w.length > 4) { cands.push(w.slice(0, -2)); cands.push(w.slice(0, -2) + "e"); }
+        for (var i = 0; i < cands.length; i++) { if (!wnHas(WN_BLOCKED, cands[i]) && wnHas(map, cands[i])) return cands[i]; }
+        return null;
+      }
       function lookupWord(raw) {
         var w = normalizeWord(raw);
         if (!w) return null;
-        if (!DICTS_READY) return { word: w, webster: null, easton: null, loading: true };
-        var cands = wordCandidates(w);
-        var web = null, eas = null, i, slot;
-        for (i = 0; i < cands.length; i++) { if (WEBSTER[cands[i]]) { web = WEBSTER[cands[i]]; break; } }
+        if (isWebMode()) {
+          // WEB mode: WordNet first, then Easton's. Webster's is KJV-only.
+          if (!DICTS_READY || !WN_READY) return { word: w, webster: null, easton: null, wordnet: null, loading: true };
+          var wnKey = wordnetLookup(raw, WORDNET);
+          var wn = wnKey ? WORDNET[wnKey] : null;
+          var cands = wordCandidates(w);
+          var eas = null, i, slot;
+          if (EASTON) {
+            for (i = 0; i < cands.length; i++) {
+              slot = EASTON.index[cands[i]];
+              if (slot != null && EASTON.entries[slot]) { eas = EASTON.entries[slot]; break; }
+            }
+          }
+          return { word: w, webster: null, easton: eas, wordnet: wn, loading: false };
+        }
+        if (!DICTS_READY) return { word: w, webster: null, easton: null, wordnet: null, loading: true };
+        var cands2 = wordCandidates(w);
+        var web = null, eas2 = null, j, slot2;
+        for (j = 0; j < cands2.length; j++) { if (WEBSTER[cands2[j]]) { web = WEBSTER[cands2[j]]; break; } }
         if (EASTON) {
-          for (i = 0; i < cands.length; i++) {
-            slot = EASTON.index[cands[i]];
-            if (slot != null && EASTON.entries[slot]) { eas = EASTON.entries[slot]; break; }
+          for (j = 0; j < cands2.length; j++) {
+            slot2 = EASTON.index[cands2[j]];
+            if (slot2 != null && EASTON.entries[slot2]) { eas2 = EASTON.entries[slot2]; break; }
           }
         }
-        return { word: w, webster: web, easton: eas, loading: false };
+        return { word: w, webster: web, easton: eas2, wordnet: null, loading: false };
       }
       // True only when the word (or one of its older forms) is actually in
       // Webster's or Easton's — the reader underlines just those words.
@@ -2400,11 +2513,21 @@
         if (!DICTS_READY) return false;
         var w = normalizeWord(raw);
         if (!w) return false;
+        if (isWebMode()) {
+          // Underlining follows the ACTIVE version's dictionaries: WordNet
+          // + Easton's in WEB mode, Webster's + Easton's in KJV mode.
+          if (!WN_READY) return false;
+          if (wnDefCache[w] !== undefined) return wnDefCache[w];
+          var res = lookupWord(w);
+          var hit = !!(res && (res.wordnet || res.easton));
+          wnDefCache[w] = hit;
+          return hit;
+        }
         if (defCache[w] !== undefined) return defCache[w];
-        var res = lookupWord(w);
-        var hit = !!(res && (res.webster || res.easton));
-        defCache[w] = hit;
-        return hit;
+        var res2 = lookupWord(w);
+        var hit2 = !!(res2 && (res2.webster || res2.easton));
+        defCache[w] = hit2;
+        return hit2;
       }
       // Bring the dictionaries in behind the reader after the first
       // paint. boot() calls this — unless the print view is open (a
@@ -2445,6 +2568,99 @@
           }
         });
         return dictsPromise;
+      }
+
+      // --- World English Bible (WEB) + WordNet (Build 18) ------------------
+      // Both load lazily from www/assets/ (the proven crossrefs pattern —
+      // bundled by cap sync, works offline in the installed app). The WEB
+      // text fetch starts in the background after boot, mirroring
+      // scheduleDicts, and never blocks boot; WordNet loads on the first
+      // switch to WEB. Neither is ever embedded as a data: URL.
+      var webPromise = null;
+      var webDeferred = false;
+      function scheduleWeb() {
+        if (window.requestIdleCallback) {
+          window.requestIdleCallback(function () { startWeb(); }, { timeout: 3000 });
+        } else {
+          setTimeout(startWeb, 800);
+        }
+      }
+      function startWeb() {
+        if (webPromise) return webPromise;
+        webPromise = fetch("assets/en_web.json")
+          .then(function (r) { if (!r.ok) throw new Error("web " + r.status); return r.json(); })
+          .then(function (data) {
+            WEB = data;
+            WEB_READY = true;
+            if (isWebMode()) {
+              updateVersionUI();
+              if ($("print-root").hidden) renderChapter(false);
+              else chapterRenderDeferred = true;
+            }
+          })
+          .catch(function () { WEB = null; WEB_READY = false; webPromise = null; });
+        return webPromise;
+      }
+      function startWordnet() {
+        if (wordnetPromise) return wordnetPromise;
+        wordnetPromise = fetch("assets/wordnet_web.json")
+          .then(function (r) { if (!r.ok) throw new Error("wordnet " + r.status); return r.json(); })
+          .then(function (data) {
+            WORDNET = data;
+            WN_READY = true;
+            if (isWebMode()) {
+              if ($("print-root").hidden) renderChapter(false);
+              else chapterRenderDeferred = true;
+              if (pendingWord && !$("sheet-root").hidden) {
+                var w = pendingWord;
+                pendingWord = null;
+                wordSheet(w);
+              }
+            }
+          })
+          .catch(function () {
+            // WordNet failed: keep Easton's working rather than leaving
+            // every WEB lookup in a loading state.
+            WORDNET = {};
+            WN_READY = true;
+            if (isWebMode() && $("print-root").hidden) renderChapter(false);
+          });
+        return wordnetPromise;
+      }
+      function updateChapterHint() {
+        var hint = $("chapter-hint");
+        if (!hint) return;
+        if (isWebMode()) {
+          hint.innerHTML = "Tap an underlined word to look it up — WordNet for the everyday words, Easton's Bible Dictionary for the names, places, and Bible terms. Only words found in one of them are underlined. Your favorites and notes are private to you alone — the <strong>My study</strong> tab explains how they save.";
+        } else {
+          hint.innerHTML = "Tap an underlined word to look it up — Webster's 1828 for the everyday words, Easton's Bible Dictionary for the names, places, and Bible terms. Only words found in one of them are underlined. Your favorites and notes are private to you alone — the <strong>My study</strong> tab explains how they save.";
+        }
+      }
+      function updateVersionUI() {
+        var kjvBtn = $("version-kjv"), webBtn = $("version-web");
+        if (kjvBtn) kjvBtn.setAttribute("aria-pressed", bibleVersion === "kjv" ? "true" : "false");
+        if (webBtn) webBtn.setAttribute("aria-pressed", bibleVersion === "web" ? "true" : "false");
+        var note = $("version-note");
+        if (note) note.textContent = bibleVersion === "web" ? (WEB ? "World English Bible · public domain" : "World English Bible — loading…") : "King James Version";
+        updateChapterHint();
+      }
+      function setBibleVersion(v) {
+        if (v !== "kjv" && v !== "web") v = "kjv";
+        bibleVersion = v;
+        try { localStorage.setItem(VERSION_KEY, v); } catch (e) {}
+        if (v === "web") {
+          if (!WEB && !webPromise) startWeb();
+          startWordnet();
+        }
+        updateVersionUI();
+        renderChapter(false);
+        if (state.tab === "saved") renderSaved();
+      }
+      function wireVersionSwitch() {
+        var kjvBtn = $("version-kjv"), webBtn = $("version-web");
+        if (kjvBtn) kjvBtn.addEventListener("click", function () { setBibleVersion("kjv"); });
+        if (webBtn) webBtn.addEventListener("click", function () { setBibleVersion("web"); });
+        updateVersionUI();
       }
 
       function searchVerses(query, limit) {
@@ -2710,6 +2926,12 @@
         pendingWord = null;
       }
 
+      function appendDefText(body, sourceLabel, plainText) {
+        body.appendChild(el("p", "def-source", sourceLabel));
+        var div = el("div", "webster-def");
+        div.textContent = plainText; // plain-text WordNet gloss — never HTML
+        body.appendChild(div);
+      }
       function appendDef(body, sourceLabel, htmlText) {
         body.appendChild(el("p", "def-source", sourceLabel));
         var div = el("div", "webster-def");
@@ -2722,6 +2944,7 @@
         if (res.loading) {
           pendingWord = rawWord;
           startDicts();
+          if (isWebMode()) startWordnet();
           openSheet("“" + res.word + "”", function (body) {
             var p = el("p", "serif", "The dictionaries are still loading — they come in right behind the Bible text so the reader opens sooner. This will fill in on its own in a moment.");
             p.style.fontSize = "18px";
@@ -2730,7 +2953,8 @@
           return;
         }
         openSheet("“" + res.word + "”", function (body) {
-          if (res.webster || res.easton) {
+          if (res.wordnet || res.webster || res.easton) {
+            if (res.wordnet) appendDefText(body, "WordNet · Princeton University", res.wordnet);
             if (res.webster) appendDef(body, "Webster's Dictionary · 1828", res.webster);
             if (res.easton) appendDef(body, "Easton's Bible Dictionary · 1897", res.easton);
           } else {
@@ -2815,9 +3039,9 @@
       }
       function xrefSheet(ref) {
         var key = xrefKey(ref);
-        var text = verseText(ref);
+        var text = activeVerseText(ref);
         openSheet("Cross references · " + formatRef(ref), function (body) {
-          var q = el("p", "sheet-verse", "\u201c" + (text || "") + "\u201d");
+          var q = el("p", "sheet-verse", text ? "\u201c" + text + "\u201d" : (isWebMode() ? "This verse is not in the WEB text." : ""));
           body.appendChild(q);
           var status = el("p", "serif", "Loading cross references\u2026");
           status.style.fontSize = "18px";
@@ -2832,8 +3056,8 @@
               body.appendChild(el("p", "def-source", list.length + " cross reference" + (list.length === 1 ? "" : "s") + (list.length > 100 ? " — showing the 100 most strongly linked" : "")));
               shown.forEach(function (s) {
                 var r = parseXrefKey(s);
-                var t = verseText(r);
-                if (t == null) return;
+                var t = activeVerseText(r);
+                if (t == null || t === "") return;
                 body.appendChild(resultCard(r, t, function (rr) { closeSheet(); openRef(rr); }));
               });
             }
@@ -2849,7 +3073,7 @@
         var sel = $("book-select");
         var ogOld = el("optgroup"); ogOld.label = "Old Testament";
         var ogNew = el("optgroup"); ogNew.label = "New Testament";
-        KJV.forEach(function (b, i) {
+        (activeBible() || KJV).forEach(function (b, i) {
           var o = el("option", null, b.name);
           o.value = String(i);
           (i < 39 ? ogOld : ogNew).appendChild(o);
@@ -2885,8 +3109,10 @@
       }
 
       function renderChapter(scroll) {
+        updateVersionUI();
         var bi = state.bookIndex, ch = state.chapter;
-        var book = KJV[bi];
+        var bible = activeBible() || KJV;
+        var book = bible[bi];
         if (!book) return;
         if (ch < 1 || ch > book.chapters.length) ch = state.chapter = 1;
         $("book-select").value = String(bi);
@@ -2918,7 +3144,9 @@
         // thousands of separate layout-triggering insertions, which can
         // freeze a phone or an in-app browser outright.
         var frag = document.createDocumentFragment();
-        var verses = book.chapters[ch - 1] || [];
+        // In WEB mode before the WEB text lands, show no rows (the
+        // loading note below) instead of silently showing KJV text.
+        var verses = (isWebMode() && !WEB) ? [] : (book.chapters[ch - 1] || []);
         verses.forEach(function (text, idx) {
           var vnum = idx + 1;
           var ref = { bookIndex: bi, chapter: ch, verse: vnum };
@@ -2928,24 +3156,28 @@
           var p = el("p", "verse-text");
           var sup = el("sup", "verse-num", String(ch) + "." + String(vnum));
           p.appendChild(sup);
-          text.split(/\s+/).filter(Boolean).forEach(function (w) {
-            // Only a word with a real entry in Webster's 1828 or Easton's
-            // becomes a tappable button — the rest is plain text, so no
-            // tap ever lands on an empty lookup.
-            if (hasDefinition(w)) {
-              var wb2 = el("button", "word", w);
-              wb2.type = "button";
-              var clean = w.replace(/[^A-Za-z'-]/g, "");
-              wb2.setAttribute("aria-label", "Look up “" + clean + "” in Webster's 1828 or Easton's Bible Dictionary");
-              // No per-word listener: one delegated handler on #verses
-              // (wired once in boot) serves every word in every chapter.
-              wb2.setAttribute("data-word", w);
-              p.appendChild(wb2);
-            } else {
-              p.appendChild(document.createTextNode(w));
-            }
-            p.appendChild(document.createTextNode(" "));
-          });
+          if (text === "" && isWebMode()) {
+            p.appendChild(el("span", "verse-empty", "This verse is not in the WEB text."));
+          } else {
+            text.split(/\s+/).filter(Boolean).forEach(function (w) {
+              // Only a word with a real entry in Webster's 1828 or Easton's
+              // becomes a tappable button — the rest is plain text, so no
+              // tap ever lands on an empty lookup.
+              if (hasDefinition(w)) {
+                var wb2 = el("button", "word", w);
+                wb2.type = "button";
+                var clean = w.replace(/[^A-Za-z'-]/g, "");
+            wb2.setAttribute("aria-label", "Look up \u201c" + clean + "\u201d in " + (isWebMode() ? "WordNet or Easton's Bible Dictionary" : "Webster's 1828 or Easton's Bible Dictionary"));
+                // No per-word listener: one delegated handler on #verses
+                // (wired once in boot) serves every word in every chapter.
+                wb2.setAttribute("data-word", w);
+                p.appendChild(wb2);
+              } else {
+                p.appendChild(document.createTextNode(w));
+              }
+              p.appendChild(document.createTextNode(" "));
+            });
+          }
           rowEl.appendChild(p);
 
           var acts = el("div", "verse-actions");
@@ -2996,15 +3228,16 @@
           frag.appendChild(rowEl);
         });
         box.appendChild(frag);
+        if (isWebMode() && !WEB) box.appendChild(el("p", "empty-note", "The World English Bible is still loading — it will appear in a moment."));
 
         // prev / next
         var prevSlot = $("prev-slot"), nextSlot = $("next-slot");
         prevSlot.innerHTML = ""; nextSlot.innerHTML = "";
         var prev = null, next = null;
         if (ch > 1) prev = { bookIndex: bi, chapter: ch - 1 };
-        else if (bi > 0) prev = { bookIndex: bi - 1, chapter: KJV[bi - 1].chapters.length };
+        else if (bi > 0) prev = { bookIndex: bi - 1, chapter: bible[bi - 1].chapters.length };
         if (ch < book.chapters.length) next = { bookIndex: bi, chapter: ch + 1 };
-        else if (bi < KJV.length - 1) next = { bookIndex: bi + 1, chapter: 1 };
+        else if (bi < bible.length - 1) next = { bookIndex: bi + 1, chapter: 1 };
         if (prev) {
           var pb = el("button", "btn btn-outline", "← Previous chapter");
           pb.type = "button";
@@ -4256,7 +4489,14 @@
           lp.style.fontSize = "18px"; lp.style.marginTop = "0.5rem";
           card.appendChild(lp);
           startDicts();
-        } else if (res.webster || res.easton) {
+          if (isWebMode()) startWordnet();
+        } else if (res.wordnet || res.webster || res.easton) {
+          if (res.wordnet) {
+            card.appendChild(el("p", "def-source", "WordNet · Princeton University"));
+            var divW = el("div", "webster-def");
+            divW.textContent = res.wordnet; // plain-text WordNet gloss — never HTML
+            card.appendChild(divW);
+          }
           if (res.webster) {
             card.appendChild(el("p", "def-source", "Webster's Dictionary · 1828"));
             var div = el("div", "webster-def");
@@ -4337,7 +4577,7 @@
           open.style.cssText = "display:block;width:100%;text-align:left;background:none;border:0;padding:0;cursor:pointer;color:inherit";
           open.setAttribute("aria-label", "Read " + formatRef(ref) + " in context");
           open.appendChild(el("span", "card-ref", formatRef(ref)));
-          open.appendChild(el("span", "card-text", verseText(ref) || ""));
+          open.appendChild(el("span", "card-text", savedCardText(ref)));
           open.addEventListener("click", function () { openRef(ref); });
           card.appendChild(open);
           var rm = el("button", "card-link", "Remove from favorites");
@@ -4360,7 +4600,7 @@
           open.style.cssText = "display:block;width:100%;text-align:left;background:none;border:0;padding:0;cursor:pointer;color:inherit";
           open.setAttribute("aria-label", "Read " + formatRef(ref) + " in context");
           open.appendChild(el("span", "card-ref", formatRef(ref)));
-          open.appendChild(el("span", "card-text", verseText(ref) || ""));
+          open.appendChild(el("span", "card-text", savedCardText(ref)));
           open.addEventListener("click", function () { openRef(ref); });
           card.appendChild(open);
           card.appendChild(el("p", "card-note", store.notes[k]));
@@ -4611,6 +4851,14 @@
           dictsDeferred = false;
           scheduleDicts();
         }
+        if (webDeferred) {
+          webDeferred = false;
+          scheduleWeb();
+        }
+        // A stored WEB choice needs WordNet too — it only ever starts on
+        // the first switch otherwise, so a relaunch straight into WEB
+        // mode would leave every word un-underlined.
+        if (isWebMode()) startWordnet();
       }
 
       // Pack all notes into a URL-safe string for the app → browser print
@@ -6940,6 +7188,7 @@
         wireJump();
         wireSnapPage();
         wireWords();
+        wireVersionSwitch();
         // Premium store (native only; no-op on the web). Registers the two
         // subscription products so an active purchase / Offer Code restores
         // Premium at launch.
@@ -7101,8 +7350,8 @@
         // open, hold all of that back until the view closes —
         // closePrintNotes releases it — so the notes screen stays still
         // and responsive instead of freezing under ~7 MB of parsing.
-        if ($("print-root").hidden) scheduleDicts();
-        else dictsDeferred = true;
+        if ($("print-root").hidden) { scheduleDicts(); scheduleWeb(); if (isWebMode()) startWordnet(); }
+        else { dictsDeferred = true; webDeferred = true; }
       }
 
       function loadFail() {
