@@ -185,14 +185,20 @@ jobs:
           APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          # NOTE (Nov 20, 2026): PROVISIONING_PROFILE_SPECIFIER must NOT be
+          # passed on the xcodebuild command line — it applies to every
+          # target, and @capacitor/camera's IONCameraLib SPM targets reject
+          # a manually-specified profile ("does not support provisioning
+          # profiles", archive fails, exit 65). The profile lives on the
+          # App target's Release config in project.pbxproj instead, so only
+          # the app target gets it.
           xcodebuild -project ios/App/App.xcodeproj \
             -scheme App -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' \
             -archivePath build/App.xcarchive archive \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="Bible Study App"
+            CODE_SIGN_IDENTITY="Apple Distribution"
           xcodebuild -exportArchive -archivePath build/App.xcarchive \
             -exportPath build -exportOptionsPlist ios/App/ExportOptions.plist
       - name: Upload .ipa
